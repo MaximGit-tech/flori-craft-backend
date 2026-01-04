@@ -45,8 +45,8 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'rest_framework',
-    'apps.core',
-    'apps.common',
+    'apps.core.apps.CoreConfig',
+    'apps.common.apps.CustomAuthConfig',
     'apps.custom_auth.apps.CustomAuthConfig',
 ]
 
@@ -58,7 +58,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    'apps.users.middleware.CookieUserMiddleware',
+    'apps.custom_auth.middleware.CookieUserMiddleware',
 ]
 
 ROOT_URLCONF = 'FloriCraft.urls'
