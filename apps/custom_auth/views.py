@@ -27,27 +27,48 @@ class VerifySmsView(APIView):
         phone = request.data.get('phone')
         code = request.data.get('code')
 
+        # Валидация входных данных
+        if not phone or not code:
+            return Response(
+                {'error': 'phone and code are required'},
+                status=400
+            )
+
         if not verify_sms(phone, code):
-            return Response({'error': 'invalid or expired code'}, status=400)
+            return Response(
+                {'error': 'invalid or expired code'},
+                status=400
+            )
 
-        user, _ = CustomUser.objects.get_or_create(phone=phone)
+        try:
+            user, _ = CustomUser.objects.get_or_create(phone=phone)
 
-        response = Response({
-            'id': user.id,
-            'phone': user.phone,
-            'name': user.name,
-        })
+            response = Response({
+                'id': user.id,
+                'phone': user.phone,
+                'name': user.name or '',
+            })
 
-        response.set_cookie(
-            key='user_id',
-            value=user.id,
-            max_age=60 * 60 * 24 * 30,
-            httponly=True,
-            secure=False,
-            samesite='Lax',
-        )
+            response.set_cookie(
+                key='user_id',
+                value=str(user.id),
+                max_age=60 * 60 * 24 * 30,
+                httponly=True,
+                secure=True,
+                samesite='Lax',
+            )
 
-        return response
+            return response
+
+        except Exception as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Error in VerifySmsView: {str(e)}")
+
+            return Response(
+                {'error': 'internal server error'},
+                status=500
+            )
 
 
 class LogoutView(APIView):
