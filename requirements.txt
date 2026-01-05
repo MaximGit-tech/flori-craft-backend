@@ -12,3 +12,4 @@ sqlparse~=0.5.5
 tzdata~=2025.3
 urllib3~=2.6.2
 dj_database_url~=3.1.0
+gunicorn~=23.0.0
