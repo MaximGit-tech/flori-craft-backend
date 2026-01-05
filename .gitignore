@@ -22,7 +22,7 @@ staticfiles/
 ############################
 # Environment & secrets
 ############################
-FloriCraft/.env
+.env
 .env.*
 !.env.example
 *.env
