@@ -16,7 +16,7 @@ load_dotenv(BASE_DIR / '.env')
 
 SECRET_KEY = os.getenv('SECRET_KEY')
 DEBUG = os.getenv('DEBUG', 'True') == 'True'
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['flori-craft-backend-production.up.railway.app', '.railway.app']
 
 
 INSTALLED_APPS = [
