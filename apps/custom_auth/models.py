@@ -1,5 +1,6 @@
-from datetime import timezone, timedelta
+from datetime import timedelta
 from django.db import models
+from django.utils import timezone
 
 
 class SmsCode(models.Model):
