@@ -96,7 +96,7 @@ DATABASES = {
         'NAME': 'FloriCraft',
         'USER': os.getenv('USER'),
         'PASSWORD': os.getenv('PASSWORD'),
-        'HOST': 'flori-craft-backend-production.up.railway.app',
+        'HOST': 'localhost',
         'PORT': '5432',
     }
 }
