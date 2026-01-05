@@ -14,7 +14,7 @@ class SendSmsView(APIView):
             return Response({'error': 'phone required'}, status=400)
 
         code = generate_sms(phone)
-        send_sms(phone, f'Ваш код: {code}')
+        # send_sms(phone, f'Ваш код: {code}')
 
         return Response({'status': 'ok'})
 
