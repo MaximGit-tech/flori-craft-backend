@@ -3,7 +3,7 @@ from ..models import SmsCode
 
 
 def generate_sms(phone: str) -> str:
-    code = random.randint(100000, 999999)
+    code = random.randint(1000, 9999)
     SmsCode.objects.create(phone=phone, code=code)
     return code
 
