@@ -16,3 +16,12 @@ class CartView(APIView):
         })
 
 
+class CartItemView(APIView):
+    def post(self, request):
+        if not request.user:
+            return Response(
+                {'error': 'unauthorized'},
+                status=401
+            )
+
+        return Response({'status': 'ok'})
