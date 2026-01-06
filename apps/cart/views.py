@@ -14,3 +14,5 @@ class CartView(APIView):
         return Response({
             'items': get_items(request.user)
         })
+
+
