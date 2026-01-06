@@ -24,12 +24,13 @@ class VerifySmsView(APIView):
     permission_classes = []
 
     def post(self, request):
+        name = request.data.get('name')
         phone = request.data.get('phone')
         code = request.data.get('code')
 
-        if not phone or not code:
+        if not phone or not code or not name:
             return Response(
-                {'error': 'phone and code are required'},
+                {'error': 'phone, code and name are required'},
                 status=400
             )
 
@@ -40,7 +41,7 @@ class VerifySmsView(APIView):
             )
 
         try:
-            user, _ = CustomUser.objects.get_or_create(phone=phone)
+            user, _ = CustomUser.objects.get_or_create(phone=phone, name=name)
 
             response = Response({
                 'id': user.id,
@@ -79,10 +80,17 @@ class LogoutView(APIView):
 
 class ProfileView(APIView):
     def get(self, request):
-        if not request.user:
-            return Response({'error': 'unauthorized'}, status=401)
+        id = request.data.get("id")
+        user_id, phone, name, _ = CustomUser.objects.filter(id=id)
+
+        if not user_id:
+            Response(
+                {'error': 'no users found'},
+                status=500
+            )
 
         return Response({
-            'phone': request.user.phone,
-            'name': request.user.name,
+            'phone': phone,
+            'name': name
         })
+
