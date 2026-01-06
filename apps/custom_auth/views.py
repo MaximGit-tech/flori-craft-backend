@@ -2,7 +2,7 @@ from rest_framework import status
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from .models import CustomUser
-from .services.sms_code import generate_sms, send_sms, verify_sms
+from .services.sms_code import generate_sms, verify_sms
 
 
 class SendSmsView(APIView):
