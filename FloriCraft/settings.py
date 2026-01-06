@@ -48,7 +48,7 @@ MIDDLEWARE = [
 
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
-    "http://flori-craft-front.vercel.app",
+    "https://flori-craft-front.vercel.app",
 ]
 
 CORS_ALLOW_CREDENTIALS = True
