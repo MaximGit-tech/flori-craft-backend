@@ -30,6 +30,7 @@ INSTALLED_APPS = [
     'apps.core.apps.CoreConfig',
     'apps.common.apps.CustomAuthConfig',
     'apps.custom_auth.apps.CustomAuthConfig',
+    'apps.cart.apps.CartConfig',
     'corsheaders',
 ]
 
