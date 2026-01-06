@@ -11,4 +11,9 @@ def get_items(user):
         cart.items.values('product_id')
     )
 
+def clear_cart(user):
+    CartItem.objects.filter(
+        cart__user=user
+    ).delete()
+
 
