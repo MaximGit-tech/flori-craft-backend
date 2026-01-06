@@ -101,6 +101,7 @@ class VerifySmsLoginView(APIView):
                 'id': user.id,
                 'phone': user.phone,
                 'name': user.name or '',
+                'gender': user.gender or ''
             })
 
             response.set_cookie(

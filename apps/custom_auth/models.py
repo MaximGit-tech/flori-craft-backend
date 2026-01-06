@@ -13,7 +13,7 @@ class SmsCode(models.Model):
 
 
 class CustomUser(models.Model):
-    phone = models.CharField(max_length=20)
+    phone = models.CharField(max_length=20, unique=True)
     name = models.CharField(max_length=255)
     gender = models.CharField(max_length=10, default='unknown')
     created_at = models.DateTimeField(auto_now_add=True)
