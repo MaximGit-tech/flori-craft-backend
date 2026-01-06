@@ -27,7 +27,6 @@ class VerifySmsView(APIView):
         phone = request.data.get('phone')
         code = request.data.get('code')
 
-        # Валидация входных данных
         if not phone or not code:
             return Response(
                 {'error': 'phone and code are required'},
@@ -52,7 +51,7 @@ class VerifySmsView(APIView):
             response.set_cookie(
                 key='user_id',
                 value=str(user.id),
-                max_age=60 * 60 * 24 * 30,
+                max_age=60 * 60 * 24 * 7,
                 httponly=True,
                 secure=True,
                 samesite='Lax',
