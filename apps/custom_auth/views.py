@@ -1,3 +1,4 @@
+from rest_framework import status
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from .models import CustomUser
@@ -80,17 +81,24 @@ class LogoutView(APIView):
 
 class ProfileView(APIView):
     def get(self, request):
-        id = request.data.get("id")
-        user_id, phone, name, _ = CustomUser.objects.filter(id=id)
+        user_id = request.query_params.get("user_id")
 
         if not user_id:
-            Response(
-                {'error': 'no users found'},
-                status=500
+            return Response(
+                {"error": "user_id is required"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            user = CustomUser.objects.get(id=user_id)
+        except CustomUser.DoesNotExist:
+            return Response(
+                {"error": "no users found"},
+                status=status.HTTP_404_NOT_FOUND
             )
 
         return Response({
-            'phone': phone,
-            'name': name
+            "phone": user.phone,
+            "name": user.name
         })
 
