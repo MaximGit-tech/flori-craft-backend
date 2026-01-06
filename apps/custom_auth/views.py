@@ -20,18 +20,19 @@ class SendSmsView(APIView):
         return Response({'status': 'ok'})
 
 
-class VerifySmsView(APIView):
+class VerifySmsRegisterView(APIView):
     authentication_classes = []
     permission_classes = []
 
     def post(self, request):
+        gender = request.data.get('gender')
         name = request.data.get('name')
         phone = request.data.get('phone')
         code = request.data.get('code')
 
-        if not phone or not code or not name:
+        if not phone or not code or not name or not gender:
             return Response(
-                {'error': 'phone, code and name are required'},
+                {'error': 'phone, code, name and gender are required'},
                 status=400
             )
 
@@ -42,7 +43,59 @@ class VerifySmsView(APIView):
             )
 
         try:
-            user, _ = CustomUser.objects.get_or_create(phone=phone, name=name)
+            user, _ = CustomUser.objects.get_or_create(phone=phone, name=name, gender=gender)
+
+            response = Response({
+                'id': user.id,
+                'phone': user.phone,
+                'name': user.name or '',
+                'gender': user.gender
+            })
+
+            response.set_cookie(
+                key='user_id',
+                value=str(user.id),
+                max_age=60 * 60 * 24 * 7,
+                httponly=True,
+                secure=True,
+                samesite='Lax',
+            )
+
+            return response
+
+        except Exception as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Error in VerifySmsView: {str(e)}")
+
+            return Response(
+                {'error': 'internal server error'},
+                status=500
+            )
+
+
+class VerifySmsLoginView(APIView):
+    authentication_classes = []
+    permission_classes = []
+
+    def post(self, request):
+        phone = request.data.get('phone')
+        code = request.data.get('code')
+
+        if not phone or not code:
+            return Response(
+                {'error': 'phone and code are required'},
+                status=400
+            )
+
+        if not verify_sms(phone, code):
+            return Response(
+                {'error': 'invalid or expired code'},
+                status=400
+            )
+
+        try:
+            user, _ = CustomUser.objects.get_or_create(phone=phone)
 
             response = Response({
                 'id': user.id,
