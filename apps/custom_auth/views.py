@@ -20,6 +20,27 @@ class SendSmsView(APIView):
         return Response({'status': 'ok'})
 
 
+class CheckPhoneView(APIView):
+    def post(self, request):
+        phone = request.data.get('phone')
+
+        if not phone:
+            return Response(
+                {'error': 'phone is required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        if CustomUser.objects.filter(phone=phone).exists():
+            return Response(
+                {'exists': True, 'message': 'user already exists'},
+                status=400
+            )
+        return Response(
+            {'exists': False},
+            status=200
+        )
+
+
 class VerifySmsRegisterView(APIView):
     authentication_classes = []
     permission_classes = []
