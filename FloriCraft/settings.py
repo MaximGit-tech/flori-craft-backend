@@ -30,6 +30,7 @@ INSTALLED_APPS = [
     'apps.core.apps.CoreConfig',
     'apps.common.apps.CustomAuthConfig',
     'apps.custom_auth.apps.CustomAuthConfig',
+    'corsheaders',
 ]
 
 MIDDLEWARE = [
@@ -41,6 +42,20 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'apps.custom_auth.middleware.CookieUserMiddleware',
+    'corsheaders.middleware.CorsMiddleware',
+]
+
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:3000",
+]
+
+CORS_ALLOW_METHODS = [
+    "GET",
+    "POST",
+    "PUT",
+    "PATCH",
+    "DELETE",
+    "OPTIONS",
 ]
 
 ROOT_URLCONF = 'FloriCraft.urls'
