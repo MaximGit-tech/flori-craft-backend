@@ -32,8 +32,8 @@ class CheckPhoneView(APIView):
 
         if CustomUser.objects.filter(phone=phone).exists():
             return Response(
-                {'exists': True, 'message': 'user already exists'},
-                status=400
+                {'exists': True},
+                status=200
             )
         return Response(
             {'exists': False},
