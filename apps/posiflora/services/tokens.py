@@ -33,5 +33,5 @@ def obtain_new_token():
     return PosifloraToken.objects.create(
         access_token=data['accessToken'],
         refresh_token=data['refreshToken'],
-        expires_at=timezone.now() + timedelta(seconds=data['expires_at'])
+        expires_at=timezone.now() + timedelta(seconds=data['expireAt'])
     )
