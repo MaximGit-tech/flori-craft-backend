@@ -1,21 +1,86 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
+from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiExample
+from drf_spectacular.types import OpenApiTypes
 from .services.products import get_product_service
 from .serializers import ProductSerializer
 
 
 class ProductListView(APIView):
     """
-    GET /api/posiflora/products/
-
-    Получить ВСЕ товары (без пагинации)
-
-    Query параметры:
-    - public_only: только публичные товары (по умолчанию true)
-    - on_window: товары на витрине (true/false, опционально)
+    API endpoint для получения всех товаров из Posiflora
     """
 
+    @extend_schema(
+        summary="Получить все товары",
+        description="Возвращает полный список товаров из Posiflora API без пагинации",
+        parameters=[
+            OpenApiParameter(
+                name='public_only',
+                type=OpenApiTypes.BOOL,
+                location=OpenApiParameter.QUERY,
+                description='Только публичные товары',
+                required=False,
+                default=True,
+            ),
+            OpenApiParameter(
+                name='on_window',
+                type=OpenApiTypes.BOOL,
+                location=OpenApiParameter.QUERY,
+                description='Товары на витрине',
+                required=False,
+            ),
+        ],
+        responses={
+            200: {
+                'type': 'object',
+                'properties': {
+                    'products': {
+                        'type': 'array',
+                        'items': {'$ref': '#/components/schemas/Product'}
+                    },
+                    'count': {
+                        'type': 'integer',
+                        'description': 'Общее количество товаров'
+                    }
+                }
+            },
+            500: {
+                'type': 'object',
+                'properties': {
+                    'error': {'type': 'string'},
+                    'detail': {'type': 'string'}
+                }
+            }
+        },
+        tags=['Posiflora Products'],
+        examples=[
+            OpenApiExample(
+                'Success Response',
+                value={
+                    'products': [
+                        {
+                            'id': '12345',
+                            'name': 'Роза красная 50см',
+                            'description': 'Красивая красная роза',
+                            'sku': 'ROSE-RED-50',
+                            'price': '150.00',
+                            'currency': 'RUB',
+                            'available': True,
+                            'image_url': 'https://example.com/image.jpg',
+                            'category': 'Розы',
+                            'item_type': 'flower',
+                            'price_min': '150.00',
+                            'price_max': '150.00'
+                        }
+                    ],
+                    'count': 1247
+                },
+                response_only=True,
+            ),
+        ]
+    )
     def get(self, request):
         try:
             # Получаем параметры из запроса
@@ -49,11 +114,44 @@ class ProductListView(APIView):
 
 class ProductDetailView(APIView):
     """
-    GET /api/posiflora/products/{id}/
-
-    Получить конкретный товар по ID
+    API endpoint для получения конкретного товара по ID
     """
 
+    @extend_schema(
+        summary="Получить товар по ID",
+        description="Возвращает детальную информацию о товаре из Posiflora API по его ID",
+        responses={
+            200: ProductSerializer,
+            404: {
+                'type': 'object',
+                'properties': {
+                    'error': {'type': 'string'},
+                    'detail': {'type': 'string'}
+                }
+            }
+        },
+        tags=['Posiflora Products'],
+        examples=[
+            OpenApiExample(
+                'Success Response',
+                value={
+                    'id': '12345',
+                    'name': 'Роза красная 50см',
+                    'description': 'Красивая красная роза',
+                    'sku': 'ROSE-RED-50',
+                    'price': '150.00',
+                    'currency': 'RUB',
+                    'available': True,
+                    'image_url': 'https://example.com/image.jpg',
+                    'category': 'Розы',
+                    'item_type': 'flower',
+                    'price_min': '150.00',
+                    'price_max': '150.00'
+                },
+                response_only=True,
+            ),
+        ]
+    )
     def get(self, request, product_id):
         try:
             service = get_product_service()

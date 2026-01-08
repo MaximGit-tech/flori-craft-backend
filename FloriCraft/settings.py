@@ -36,6 +36,7 @@ INSTALLED_APPS = [
     'apps.cart.apps.CartConfig',
     'apps.posiflora.apps.PosifloraConfig',
     'corsheaders',
+    'drf_spectacular',
 ]
 
 MIDDLEWARE = [
@@ -95,6 +96,7 @@ REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
         'apps.custom_auth.authentication.CookieUserAuthentication',
     ],
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
 }
 
 DATABASES = {
@@ -103,6 +105,26 @@ DATABASES = {
         conn_max_age=600,
         ssl_require=True
     )
+}
+
+
+SPECTACULAR_SETTINGS = {
+    'TITLE': 'FloriCraft API',
+    'DESCRIPTION': 'API для цветочного интернет-магазина FloriCraft с интеграцией Posiflora',
+    'VERSION': '1.0.0',
+    'SERVE_INCLUDE_SCHEMA': False,
+    'COMPONENT_SPLIT_REQUEST': True,
+    'SCHEMA_PATH_PREFIX': '/api/',
+    'SWAGGER_UI_SETTINGS': {
+        'deepLinking': True,
+        'persistAuthorization': True,
+        'displayOperationId': True,
+    },
+    'TAGS': [
+        {'name': 'Posiflora Products', 'description': 'Управление товарами из Posiflora API'},
+        {'name': 'Cart', 'description': 'Управление корзиной'},
+        {'name': 'Auth', 'description': 'Аутентификация и авторизация'},
+    ],
 }
 
 # Internationalization

@@ -14,3 +14,4 @@ urllib3~=2.6.2
 dj_database_url~=3.1.0
 gunicorn~=23.0.0
 django-cors-headers~=4.9.0
+drf-spectacular~=0.29.0
