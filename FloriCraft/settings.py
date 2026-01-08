@@ -18,6 +18,7 @@ SECRET_KEY = os.getenv('SECRET_KEY')
 DEBUG = os.getenv('DEBUG', 'True') == 'True'
 ALLOWED_HOSTS = ['flori-craft-backend-production.up.railway.app', '.railway.app']
 
+POSIFLORA_URL=os.getenv('POSIFLORA_URL')
 POSIFLORA_USER=os.getenv('POSIFLORA_USER')
 POSIFLORA_PASSWORD=os.getenv('POSIFLORA_PASSWORD')
 
@@ -33,6 +34,7 @@ INSTALLED_APPS = [
     'apps.common.apps.CustomAuthConfig',
     'apps.custom_auth.apps.CustomAuthConfig',
     'apps.cart.apps.CartConfig',
+    'apps.posiflora.apps.PosifloraConfig',
     'corsheaders',
 ]
 

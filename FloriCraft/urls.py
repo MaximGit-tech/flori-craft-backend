@@ -19,5 +19,6 @@ from django.urls import path, include
 
 urlpatterns = [
     path('api/custom_auth/', include('apps.custom_auth.urls')),
-    path('api/cart/', include('apps.cart.urls'))
+    path('api/cart/', include('apps.cart.urls')),
+    path('api/posiflora/', include('apps.posiflora.urls')),
 ]
