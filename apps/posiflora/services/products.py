@@ -221,7 +221,7 @@ class PosifloraProductService:
         ]
         '''
 
-        url = self._build_url("/bouquets")
+        url = self._build_url(self.BASE_PATH)
         response = requests.get(
             url,
             headers=self._get_headers(),
