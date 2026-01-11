@@ -1,13 +1,18 @@
+from collections import defaultdict
+import re
 import requests
 from typing import Dict, List, Optional
 from django.conf import settings
 from .tokens import get_session
 
 
+SIZE_PATTERN = re.compile(r"\s(S|M|L)$")
+SIZE_ORDER = {"S": 0, "M": 1, "L": 2}
+
 class PosifloraProductService:
     """Сервис для работы с товарами через Posiflora API (без пагинации)"""
 
-    BASE_PATH = "/inventory-items"
+    BASE_PATH = "/bouquets"
 
     def __init__(self):
         self.session = get_session()
@@ -73,21 +78,21 @@ class PosifloraProductService:
         return None
 
     def _parse_product(self, product_data: Dict, included: Optional[List[Dict]] = None) -> Dict:
-        """Парсинг данных товара из формата JSON:API в удобный формат"""
+        """Парсинг данных букета из формата JSON:API в удобный формат"""
         attributes = product_data.get("attributes", {})
         product_id = product_data.get("id")
 
         image_url = self._get_image_url_from_included(product_data, included)
         category_name = self._get_category_from_included(product_data, included)
 
-        # SKU: берём globalId если есть, иначе сам id
-        sku = attributes.get("globalId") or product_id
+        # SKU: берём docNo если есть, иначе сам id
+        sku = attributes.get("docNo") or product_id
 
-        # Цена из priceMin/priceMax
-        price = attributes.get("priceMin") or attributes.get("priceMax")
+        # Цена из trueSaleAmount -> saleAmount -> amount (для букетов)
+        price = attributes.get("trueSaleAmount") or attributes.get("saleAmount") or attributes.get("amount")
 
         # Доступность из поля public
-        available = bool(attributes.get("public", True))
+        available = bool(attributes.get("public", False))
 
         return {
             "id": product_id,
@@ -99,9 +104,13 @@ class PosifloraProductService:
             "available": available,
             "image_url": image_url,
             "category": category_name or "",
-            "item_type": attributes.get("itemType"),
-            "price_min": attributes.get("priceMin"),
-            "price_max": attributes.get("priceMax"),
+            "item_type": "bouquet",
+            "price_min": price,
+            "price_max": price,
+            "amount": attributes.get("amount"),
+            "sale_amount": attributes.get("saleAmount"),
+            "true_sale_amount": attributes.get("trueSaleAmount"),
+            "status": attributes.get("status"),
         }
 
     def get_all_products(
@@ -190,6 +199,92 @@ class PosifloraProductService:
         included = payload.get("included", [])
 
         return self._parse_product(product_data, included)
+
+
+    def fetch_products_from_posiflora(self):
+        '''
+        Получить букеты с группировкой по названию и размерам
+
+        return:
+        список словарей в формате:
+        [
+            {
+                "title": "Букет роз",
+                "description": "Красивый букет из роз",
+                "image_urls": ["/images/rose_1.png", ...],
+                "variants": [
+                    {"size": "S", "price": 4500},
+                    {"size": "M", "price": 5500},
+                    {"size": "L", "price": 6500}
+                ]
+            }
+        ]
+        '''
+
+        url = self._build_url("/bouquets")
+        response = requests.get(
+            url,
+            headers=self._get_headers(),
+        )
+        response.raise_for_status()
+        payload = response.json()
+
+        bouquets = payload.get("data", [])
+        included = payload.get("included", [])
+
+        grouped_products = defaultdict(lambda: {
+            "title": "",
+            "description": "",
+            "image_urls": set(),
+            "variants": []
+        })
+
+        for bouquet in bouquets:
+            attrs = bouquet["attributes"]
+
+            raw_title = attrs.get("title", "")
+            description = attrs.get("description") or ""
+
+            price = attrs.get("trueSaleAmount") or attrs.get("saleAmount") or attrs.get("amount", 0)
+            price = float(price) if price else 0
+
+            match = SIZE_PATTERN.search(raw_title)
+            if not match:
+                continue
+
+            size = match.group(1)
+            clean_title = SIZE_PATTERN.sub("", raw_title).strip()
+
+            product = grouped_products[clean_title]
+            product["title"] = clean_title
+            product["description"] = description
+
+            image_url = self._get_image_url_from_included(bouquet, included)
+            if image_url:
+                product["image_urls"].add(image_url)
+
+            product["variants"].append({
+                "size": size,
+                "price": price,
+            })
+
+        result = []
+        for product in grouped_products.values():
+            # Сортируем варианты по размеру
+            product["variants"] = sorted(
+                product["variants"],
+                key=lambda v: SIZE_ORDER.get(v["size"], 999)
+            )
+
+            if not product["variants"]:
+                continue
+
+            product["image_urls"] = list(product["image_urls"])
+
+            result.append(product)
+
+        return result
+
 
 
 def get_product_service() -> PosifloraProductService:

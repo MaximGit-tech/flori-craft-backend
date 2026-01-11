@@ -83,21 +83,18 @@ class ProductListView(APIView):
     )
     def get(self, request):
         try:
-            # Получаем параметры из запроса
             public_only = request.query_params.get('public_only', 'true').lower() == 'true'
 
             on_window = request.query_params.get('on_window')
             if on_window is not None:
                 on_window = on_window.lower() == 'true'
 
-            # Получаем все товары из API
             service = get_product_service()
             products = service.get_all_products(
                 public_only=public_only,
                 on_window=on_window,
             )
 
-            # Сериализуем данные
             serializer = ProductSerializer(products, many=True)
 
             return Response({
