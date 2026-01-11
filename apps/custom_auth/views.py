@@ -501,8 +501,7 @@ class ProfileView(APIView):
                 type=OpenApiTypes.INT,
                 location=OpenApiParameter.QUERY,
                 description='ID пользователя',
-                required=True,
-                example=42
+                required=True
             )
         ],
         responses={
