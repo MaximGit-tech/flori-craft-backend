@@ -229,15 +229,8 @@ class VerifySmsRegisterView(APIView):
                 'properties': {
                     'error': {
                         'type': 'string',
-                        'description': 'Описание ошибки'
-                    }
-                },
-                'examples': {
-                    'missing_fields': {
-                        'value': {'error': 'phone, code, name and gender are required'}
-                    },
-                    'invalid_code': {
-                        'value': {'error': 'invalid or expired code'}
+                        'description': 'Описание ошибки',
+                        'example': 'phone, code, name and gender are required'
                     }
                 }
             },
@@ -393,15 +386,8 @@ class VerifySmsLoginView(APIView):
                 'properties': {
                     'error': {
                         'type': 'string',
-                        'description': 'Описание ошибки'
-                    }
-                },
-                'examples': {
-                    'missing_fields': {
-                        'value': {'error': 'phone and code are required'}
-                    },
-                    'invalid_code': {
-                        'value': {'error': 'invalid or expired code'}
+                        'description': 'Описание ошибки',
+                        'example': 'phone and code are required'
                     }
                 }
             },
