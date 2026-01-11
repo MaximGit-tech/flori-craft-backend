@@ -506,6 +506,79 @@ class LogoutView(APIView):
 
 
 class ProfileView(APIView):
+    @extend_schema(
+        summary="Получить профиль пользователя",
+        description="Возвращает информацию о пользователе по его ID",
+        parameters=[
+            OpenApiParameter(
+                name='user_id',
+                type=OpenApiTypes.INT,
+                location=OpenApiParameter.QUERY,
+                description='ID пользователя',
+                required=True,
+                example=42
+            )
+        ],
+        responses={
+            200: {
+                'type': 'object',
+                'properties': {
+                    'phone': {
+                        'type': 'string',
+                        'description': 'Номер телефона пользователя',
+                        'example': '+79991234567'
+                    },
+                    'name': {
+                        'type': 'string',
+                        'description': 'Имя пользователя',
+                        'example': 'Иван'
+                    }
+                }
+            },
+            400: {
+                'type': 'object',
+                'properties': {
+                    'error': {
+                        'type': 'string',
+                        'example': 'user_id is required'
+                    }
+                }
+            },
+            404: {
+                'type': 'object',
+                'properties': {
+                    'error': {
+                        'type': 'string',
+                        'example': 'no users found'
+                    }
+                }
+            }
+        },
+        tags=['User Profile'],
+        examples=[
+            OpenApiExample(
+                'Успешное получение профиля',
+                value={
+                    'phone': '+79991234567',
+                    'name': 'Иван'
+                },
+                response_only=True,
+                status_codes=['200']
+            ),
+            OpenApiExample(
+                'Ошибка: отсутствует user_id',
+                value={'error': 'user_id is required'},
+                response_only=True,
+                status_codes=['400']
+            ),
+            OpenApiExample(
+                'Ошибка: пользователь не найден',
+                value={'error': 'no users found'},
+                response_only=True,
+                status_codes=['404']
+            )
+        ]
+    )
     def get(self, request):
         user_id = request.query_params.get("user_id")
 
