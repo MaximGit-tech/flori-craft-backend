@@ -84,28 +84,20 @@ class Command(BaseCommand):
 
             # Парсим expires_at
             if expire_at:
-                # Если это строка, парсим её
                 if isinstance(expire_at, str):
                     try:
-                        # Пробуем разные форматы
-                        for fmt in ['%Y-%m-%dT%H:%M:%S.%fZ', '%Y-%m-%dT%H:%M:%SZ', '%Y-%m-%d %H:%M:%S']:
-                            try:
-                                expires_at = datetime.strptime(expire_at, fmt)
-                                expires_at = timezone.make_aware(expires_at, timezone.utc)
-                                break
-                            except ValueError:
-                                continue
-                        else:
-                            # Если ни один формат не подошел, используем значение по умолчанию
-                            self.stdout.write(self.style.WARNING(
-                                f'Не удалось распарсить expireAt: {expire_at}, '
-                                'используется значение по умолчанию (24 часа)'
-                            ))
-                            expires_at = timezone.now() + timedelta(hours=24)
-                    except Exception as e:
+                        # Используем fromisoformat для парсинга ISO 8601 формата
+                        # Формат: "2026-01-12T19:39:42+00:00"
+                        expires_at = datetime.fromisoformat(expire_at)
+
+                        # Если timezone не указан, добавляем UTC
+                        if expires_at.tzinfo is None:
+                            expires_at = timezone.make_aware(expires_at, timezone.utc)
+
+                    except (ValueError, AttributeError) as e:
                         self.stdout.write(self.style.WARNING(
-                            f'Ошибка при парсинге expireAt: {e}, '
-                            'используется значение по умолчанию (24 часа)'
+                            f'Не удалось распарсить expireAt: {expire_at}, ошибка: {e}\n'
+                            'Используется значение по умолчанию (24 часа)'
                         ))
                         expires_at = timezone.now() + timedelta(hours=24)
                 else:

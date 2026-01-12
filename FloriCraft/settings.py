@@ -18,9 +18,9 @@ SECRET_KEY = os.getenv('SECRET_KEY')
 DEBUG = os.getenv('DEBUG', 'True') == 'True'
 ALLOWED_HOSTS = ['flori-craft-backend-production.up.railway.app', '.railway.app']
 
-POSIFLORA_URL=os.getenv('POSIFLORA_URL')
-POSIFLORA_USER=os.getenv('POSIFLORA_USER')
-POSIFLORA_PASSWORD=os.getenv('POSIFLORA_PASSWORD')
+POSIFLORA_URL = os.getenv('POSIFLORA_URL', 'https://floricraft.posiflora.com/api/v1')
+POSIFLORA_USER = os.getenv('POSIFLORA_USER')
+POSIFLORA_PASSWORD = os.getenv('POSIFLORA_PASSWORD')
 
 INSTALLED_APPS = [
     'django.contrib.admin',
