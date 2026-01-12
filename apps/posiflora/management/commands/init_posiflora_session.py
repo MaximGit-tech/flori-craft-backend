@@ -61,7 +61,7 @@ class Command(BaseCommand):
                     'data': {
                         'type': 'sessions',
                         'attributes': {
-                            'login': username,
+                            'username': username,
                             'password': password,
                         }
                     }
