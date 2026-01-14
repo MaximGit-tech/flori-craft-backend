@@ -4,7 +4,7 @@ from .views import (
     ProductDetailView,
     BouquetListView,
     ProductsByCategoryView,
-    SpecificationsView,
+    ProductsInStock,
 )
 
 app_name = 'posiflora'
@@ -15,5 +15,5 @@ urlpatterns = [
 
     path('bouquets/', BouquetListView.as_view(), name='bouquet-list'),
     path('products-by-category/', ProductsByCategoryView.as_view(), name='products-by-category'),
-    path('specifications/', SpecificationsView.as_view(), name='specifications'),
+    path('specifications/', ProductsInStock.as_view(), name='specifications'),
 ]

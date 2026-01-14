@@ -297,13 +297,13 @@ class ProductsByCategoryView(APIView):
             )
 
 
-class SpecificationsView(APIView):
+class ProductsInStock(APIView):
     """
-    API endpoint для получения спецификаций (букетов) с вариантами
+    API endpoint для получения товаров из базы посифлоры с вариантами
     """
 
     @extend_schema(
-        summary="Получить спецификации по категориям",
+        summary="Получить товары с вариантами",
         description="Возвращает спецификации из Posiflora API с вариантами размеров, сгруппированные по категориям",
         responses={
             200: CategorizedProductsSerializer,
