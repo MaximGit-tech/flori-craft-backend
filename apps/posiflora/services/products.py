@@ -119,68 +119,6 @@ class PosifloraProductService:
             "status": attributes.get("status"),
         }
 
-    def get_all_products(
-        self,
-        public_only: bool = True,
-        on_window: Optional[bool] = None,
-    ) -> List[Dict]:
-        """
-        Получить ВСЕ товары из API (проходит по всем страницам)
-
-        Args:
-            public_only: Только публичные товары
-            on_window: Фильтр по витрине (True/False/None)
-
-        Returns:
-            Список всех товаров
-        """
-        all_items: List[Dict] = []
-        page_number = 1
-        page_size = 100
-
-        while True:
-            url = self._build_url(self.BASE_PATH)
-            params = {
-                "page[number]": page_number,
-                "page[size]": page_size,
-            }
-
-            if public_only:
-                params["public"] = "true"
-            if on_window is not None:
-                params["filter[onWindow]"] = "true" if on_window else "false"
-
-            response = requests.get(
-                url,
-                headers=self._get_headers(),
-                params=params,
-            )
-            response.raise_for_status()
-            payload = response.json()
-
-            data = payload.get("data", [])
-            if not data:
-                break
-
-            included = payload.get("included", [])
-
-            # Парсим каждый товар
-            for item in data:
-                parsed = self._parse_product(item, included)
-                all_items.append(parsed)
-
-            # Проверяем, есть ли следующая страница
-            meta_page = payload.get("meta", {}).get("page", {})
-            current = meta_page.get("number") or page_number
-            size = meta_page.get("size") or page_size
-            total = meta_page.get("total")
-
-            if total is not None and current * size >= total:
-                break
-
-            page_number += 1
-
-        return all_items
 
     def get_product_by_id(self, product_id: str) -> Dict:
         """
@@ -250,7 +188,6 @@ class PosifloraProductService:
             description = attributes.get("description", "")
             price = attributes.get("saleAmount", 0)
 
-            # Собираем все доступные изображения
             image_urls = []
             if attributes.get("logo"):
                 image_urls.append(attributes["logo"])
@@ -266,238 +203,6 @@ class PosifloraProductService:
                 "image_urls": image_urls,
                 "price": price
             })
-
-        return result
-
-    def fetch_products_by_categories(self) -> Dict:
-        """
-        Получить все продукты, сгруппированные по категориям
-
-        Returns:
-            Словарь в формате:
-            {
-                "categories": [
-                    {
-                        "name": "Аксессуары для цветов",
-                        "products": [
-                            {
-                                "title": "ваза керамика коричневая",
-                                "description": "",
-                                "image_urls": ["url1", "url2", "url3"],
-                                "price": 4500
-                            }
-                        ]
-                    }
-                ]
-            }
-        """
-        # Получаем все категории
-        categories_url = self._build_shop_url("/categories")
-        categories_params = {
-            "urlPath": "floricraft"
-        }
-
-        categories_response = requests.get(
-            categories_url,
-            headers=self._get_headers(),
-            params=categories_params,
-        )
-        categories_response.raise_for_status()
-        categories_payload = categories_response.json()
-
-        categories_data = categories_payload.get("data", [])
-        result_categories = []
-
-        # Для каждой категории получаем продукты
-        for category in categories_data:
-            category_id = category.get("id", "")
-            category_attributes = category.get("attributes", {})
-            category_name = category_attributes.get("title", "")
-
-            # Пропускаем категории без продуктов
-            if category_attributes.get("countProducts", 0) == 0:
-                continue
-
-            # Получаем продукты для этой категории
-            products_url = self._build_shop_url("/products")
-            products_params = {
-                "page[number]": 1,
-                "page[size]": 100,
-                "filter[categories]": category_id,
-                "sort": "-price",
-                "urlPath": "floricraft"
-            }
-
-            products_response = requests.get(
-                products_url,
-                headers=self._get_headers(),
-                params=products_params,
-            )
-            products_response.raise_for_status()
-            products_payload = products_response.json()
-
-            products_data = products_payload.get("data", [])
-
-            # Группируем продукты по названию для поддержки вариантов размеров
-            grouped_products = defaultdict(lambda: {
-                "title": "",
-                "description": "",
-                "image_urls": set(),
-                "variants": [],
-                "price": None
-            })
-
-            for product in products_data:
-                product_attributes = product.get("attributes", {})
-                raw_title = product_attributes.get("title", "")
-                description = product_attributes.get("description", "")
-                price = product_attributes.get("price", 0)
-
-                # Собираем изображения
-                image_urls = []
-                if product_attributes.get("logo"):
-                    image_urls.append(product_attributes["logo"])
-                if product_attributes.get("logoMedium"):
-                    image_urls.append(product_attributes["logoMedium"])
-                if product_attributes.get("logoShop"):
-                    image_urls.append(product_attributes["logoShop"])
-
-                # Проверяем, есть ли в названии размер (S, M, L)
-                match = SIZE_PATTERN.search(raw_title)
-                if match:
-                    # Если есть размер - добавляем как вариант
-                    size = match.group(1)
-                    clean_title = SIZE_PATTERN.sub("", raw_title).strip()
-
-                    product_group = grouped_products[clean_title]
-                    product_group["title"] = clean_title
-                    product_group["description"] = description
-                    for img_url in image_urls:
-                        product_group["image_urls"].add(img_url)
-                    product_group["variants"].append({
-                        "size": size,
-                        "price": price
-                    })
-                else:
-                    # Если размера нет - добавляем как обычный продукт
-                    product_group = grouped_products[raw_title]
-                    product_group["title"] = raw_title
-                    product_group["description"] = description
-                    for img_url in image_urls:
-                        product_group["image_urls"].add(img_url)
-                    product_group["price"] = price
-
-            # Преобразуем сгруппированные продукты в финальный формат
-            category_products = []
-            for product_data in grouped_products.values():
-                product_dict = {
-                    "title": product_data["title"],
-                    "description": product_data["description"],
-                    "image_urls": list(product_data["image_urls"])
-                }
-
-                if product_data["variants"]:
-                    # Сортируем варианты по размеру
-                    sorted_variants = sorted(
-                        product_data["variants"],
-                        key=lambda v: SIZE_ORDER.get(v["size"], 999)
-                    )
-                    product_dict["variants"] = sorted_variants
-                else:
-                    product_dict["price"] = product_data["price"]
-
-                category_products.append(product_dict)
-
-            # Добавляем категорию только если в ней есть продукты
-            if category_products:
-                result_categories.append({
-                    "name": category_name,
-                    "products": category_products
-                })
-
-        return {"categories": result_categories}
-
-    def fetch_products_from_posiflora(self):
-        '''
-        Получить букеты с группировкой по названию и размерам
-
-        return:
-        список словарей в формате:
-        [
-            {
-                "title": "Букет роз",
-                "description": "Красивый букет из роз",
-                "image_urls": ["/images/rose_1.png", ...],
-                "variants": [
-                    {"size": "S", "price": 4500},
-                    {"size": "M", "price": 5500},
-                    {"size": "L", "price": 6500}
-                ]
-            }
-        ]
-        '''
-
-        url = self._build_url(self.BASE_PATH)
-        response = requests.get(
-            url,
-            headers=self._get_headers(),
-        )
-        response.raise_for_status()
-        payload = response.json()
-
-        bouquets = payload.get("data", [])
-        included = payload.get("included", [])
-
-        grouped_products = defaultdict(lambda: {
-            "title": "",
-            "description": "",
-            "image_urls": set(),
-            "variants": []
-        })
-
-        for bouquet in bouquets:
-            attrs = bouquet["attributes"]
-
-            raw_title = attrs.get("title", "")
-            description = attrs.get("description") or ""
-
-            price = attrs.get("trueSaleAmount") or attrs.get("saleAmount") or attrs.get("amount", 0)
-            price = float(price) if price else 0
-
-            match = SIZE_PATTERN.search(raw_title)
-            if not match:
-                continue
-
-            size = match.group(1)
-            clean_title = SIZE_PATTERN.sub("", raw_title).strip()
-
-            product = grouped_products[clean_title]
-            product["title"] = clean_title
-            product["description"] = description
-
-            image_url = self._get_image_url_from_included(bouquet, included)
-            if image_url:
-                product["image_urls"].add(image_url)
-
-            product["variants"].append({
-                "size": size,
-                "price": price,
-            })
-
-        result = []
-        for product in grouped_products.values():
-            # Сортируем варианты по размеру
-            product["variants"] = sorted(
-                product["variants"],
-                key=lambda v: SIZE_ORDER.get(v["size"], 999)
-            )
-
-            if not product["variants"]:
-                continue
-
-            product["image_urls"] = list(product["image_urls"])
-
-            result.append(product)
 
         return result
 
@@ -552,13 +257,11 @@ class PosifloraProductService:
         specifications_data = payload.get("data", [])
         included = payload.get("included", [])
 
-        # Создаем индекс included для быстрого поиска
         included_index = {}
         for item in included:
             key = (item.get("type"), item.get("id"))
             included_index[key] = item
 
-        # Группируем продукты по категориям
         categories_dict = defaultdict(list)
 
         for spec in specifications_data:
@@ -569,7 +272,6 @@ class PosifloraProductService:
             title = attributes.get("title", "")
             description = attributes.get("description", "")
 
-            # Получаем категорию
             category_data = relationships.get("category", {}).get("data")
             if category_data:
                 category_key = (category_data.get("type"), category_data.get("id"))
@@ -578,7 +280,6 @@ class PosifloraProductService:
             else:
                 category_name = "Без категории"
 
-            # Получаем изображения
             images_data = relationships.get("images", {}).get("data", [])
             image_urls = []
             for img_ref in images_data:
@@ -590,7 +291,6 @@ class PosifloraProductService:
                     if img_url:
                         image_urls.append(img_url)
 
-            # Получаем варианты (specVariants)
             spec_variants_data = relationships.get("specVariants", {}).get("data", [])
             variants = []
 
@@ -603,7 +303,6 @@ class PosifloraProductService:
 
                 spec_variant_rels = spec_variant_obj.get("relationships", {})
 
-                # Получаем название варианта (размер)
                 variant_data = spec_variant_rels.get("variant", {}).get("data")
                 if variant_data:
                     variant_key = (variant_data.get("type"), variant_data.get("id"))
@@ -615,7 +314,6 @@ class PosifloraProductService:
                 else:
                     continue
 
-                # Получаем цену из specVariantPrices
                 spec_variant_prices_data = spec_variant_rels.get("specVariantPrices", {}).get("data", [])
                 price = None
 
@@ -624,7 +322,6 @@ class PosifloraProductService:
                     price_obj = included_index.get(price_key)
                     if price_obj:
                         price_attrs = price_obj.get("attributes", {})
-                        # Берем первую доступную цену
                         if price_attrs.get("status") == "on":
                             price = price_attrs.get("priceValue") or price_attrs.get("compositionPrice")
                             break
@@ -635,23 +332,19 @@ class PosifloraProductService:
                         "price": price
                     })
 
-            # Формируем продукт
             product_dict = {
                 "title": title,
                 "description": description,
                 "image_urls": image_urls
             }
 
-            # Если есть варианты - добавляем их, иначе используем minPrice/maxPrice
             if variants:
-                # Сортируем варианты по размеру
                 sorted_variants = sorted(
                     variants,
                     key=lambda v: SIZE_ORDER.get(v["size"], 999)
                 )
                 product_dict["variants"] = sorted_variants
             else:
-                # Если нет вариантов, используем minPrice или maxPrice
                 min_price = attributes.get("minPrice")
                 max_price = attributes.get("maxPrice")
                 if min_price is not None or max_price is not None:
@@ -659,7 +352,6 @@ class PosifloraProductService:
 
             categories_dict[category_name].append(product_dict)
 
-        # Преобразуем в итоговый формат
         result_categories = [
             {
                 "name": category_name,
