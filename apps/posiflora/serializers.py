@@ -41,6 +41,7 @@ class ProductVariantSerializer(serializers.Serializer):
 class CategoryProductSerializer(serializers.Serializer):
     """Serializer для продукта внутри категории"""
 
+    id = serializers.CharField(read_only=True)
     title = serializers.CharField(max_length=500)
     description = serializers.CharField(allow_blank=True, allow_null=True)
     image_urls = serializers.ListField(

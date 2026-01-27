@@ -34,6 +34,7 @@ INSTALLED_APPS = [
     'apps.common.apps.CustomAuthConfig',
     'apps.custom_auth.apps.CustomAuthConfig',
     'apps.cart.apps.CartConfig',
+    'apps.orders.apps.OrdersConfig',
     'apps.posiflora.apps.PosifloraConfig',
     'corsheaders',
     'drf_spectacular',

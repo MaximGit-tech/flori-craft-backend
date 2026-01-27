@@ -5,6 +5,7 @@ from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiExampl
 from drf_spectacular.types import OpenApiTypes
 from .services.products import get_product_service
 from .serializers import (
+    CategoryProductSerializer,
     ProductSerializer,
     BouquetSerializer,
     CategorizedProductsSerializer,
@@ -56,7 +57,7 @@ class ProductDetailView(APIView):
             service = get_product_service()
             product = service.get_product_by_id(product_id)
 
-            serializer = ProductSerializer(product)
+            serializer = CategoryProductSerializer(product)
             return Response(serializer.data, status=status.HTTP_200_OK)
 
         except Exception as e:
