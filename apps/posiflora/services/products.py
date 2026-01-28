@@ -333,6 +333,7 @@ class PosifloraProductService:
                     })
 
             product_dict = {
+                "id": spec_id,
                 "title": title,
                 "description": description,
                 "image_urls": image_urls
@@ -361,6 +362,136 @@ class PosifloraProductService:
         ]
 
         return {"categories": result_categories}
+
+
+    def get_specification_by_id(self, product_id: str) -> Dict:
+        """
+        Получить конкретную спецификацию (букет) по ID в формате CategoryProductSerializer
+
+        Args:
+            product_id: ID спецификации
+
+        Returns:
+            Данные продукта в формате:
+            {
+                "id": "uuid",
+                "title": "Букет Максим",
+                "description": "",
+                "image_urls": ["url1", "url2"],
+                "variants": [
+                    {"size": "S", "price": 4050},
+                    {"size": "M", "price": 3150}
+                ]
+            }
+            или
+            {
+                "id": "uuid",
+                "title": "Ваза",
+                "description": "",
+                "image_urls": ["url1"],
+                "price": 4500
+            }
+        """
+        url = self._build_url(f"/specifications/{product_id}")
+        params = {
+            "include": "category,specVariants.variant,specVariants.variant.tags,specVariants.specVariantPrices,images",
+        }
+
+        response = requests.get(
+            url,
+            headers=self._get_headers(),
+            params=params,
+        )
+        response.raise_for_status()
+        payload = response.json()
+
+        spec = payload.get("data", {})
+        included = payload.get("included", [])
+
+        spec_id = spec.get("id")
+        attributes = spec.get("attributes", {})
+        relationships = spec.get("relationships", {})
+
+        title = attributes.get("title", "")
+        description = attributes.get("description", "")
+
+        included_index = {}
+        for item in included:
+            key = (item.get("type"), item.get("id"))
+            included_index[key] = item
+
+        images_data = relationships.get("images", {}).get("data", [])
+        image_urls = []
+        for img_ref in images_data:
+            img_key = (img_ref.get("type"), img_ref.get("id"))
+            img_obj = included_index.get(img_key)
+            if img_obj:
+                img_attrs = img_obj.get("attributes", {})
+                img_url = img_attrs.get("url") or img_attrs.get("original") or img_attrs.get("path")
+                if img_url:
+                    image_urls.append(img_url)
+
+        spec_variants_data = relationships.get("specVariants", {}).get("data", [])
+        variants = []
+
+        for spec_variant_ref in spec_variants_data:
+            spec_variant_key = (spec_variant_ref.get("type"), spec_variant_ref.get("id"))
+            spec_variant_obj = included_index.get(spec_variant_key)
+
+            if not spec_variant_obj:
+                continue
+
+            spec_variant_rels = spec_variant_obj.get("relationships", {})
+
+            variant_data = spec_variant_rels.get("variant", {}).get("data")
+            if variant_data:
+                variant_key = (variant_data.get("type"), variant_data.get("id"))
+                variant_obj = included_index.get(variant_key)
+                if variant_obj:
+                    size = variant_obj.get("attributes", {}).get("title", "")
+                else:
+                    continue
+            else:
+                continue
+
+            spec_variant_prices_data = spec_variant_rels.get("specVariantPrices", {}).get("data", [])
+            price = None
+
+            for price_ref in spec_variant_prices_data:
+                price_key = (price_ref.get("type"), price_ref.get("id"))
+                price_obj = included_index.get(price_key)
+                if price_obj:
+                    price_attrs = price_obj.get("attributes", {})
+                    if price_attrs.get("status") == "on":
+                        price = price_attrs.get("priceValue") or price_attrs.get("compositionPrice")
+                        break
+
+            if price is not None and size:
+                variants.append({
+                    "size": size,
+                    "price": price
+                })
+
+        product_dict = {
+            "id": spec_id,
+            "title": title,
+            "description": description,
+            "image_urls": image_urls
+        }
+
+        if variants:
+            sorted_variants = sorted(
+                variants,
+                key=lambda v: SIZE_ORDER.get(v["size"], 999)
+            )
+            product_dict["variants"] = sorted_variants
+        else:
+            min_price = attributes.get("minPrice")
+            max_price = attributes.get("maxPrice")
+            if min_price is not None or max_price is not None:
+                product_dict["price"] = min_price if min_price is not None else (max_price or 0)
+
+        return product_dict
 
 
 def get_product_service() -> PosifloraProductService:

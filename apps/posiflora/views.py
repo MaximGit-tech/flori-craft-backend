@@ -19,9 +19,9 @@ class ProductDetailView(APIView):
 
     @extend_schema(
         summary="Получить товар по ID",
-        description="Возвращает детальную информацию о товаре из Posiflora API по его ID",
+        description="Возвращает детальную информацию о товаре из Posiflora API по его ID в том же формате, что и specifications/",
         responses={
-            200: ProductSerializer,
+            200: CategoryProductSerializer,
             404: {
                 'type': 'object',
                 'properties': {
@@ -35,18 +35,18 @@ class ProductDetailView(APIView):
             OpenApiExample(
                 'Success Response',
                 value={
-                    'id': '12345',
-                    'name': 'Роза красная 50см',
-                    'description': 'Красивая красная роза',
-                    'sku': 'ROSE-RED-50',
-                    'price': '150.00',
-                    'currency': 'RUB',
-                    'available': True,
-                    'image_url': 'https://example.com/image.jpg',
-                    'category': 'Розы',
-                    'item_type': 'flower',
-                    'price_min': '150.00',
-                    'price_max': '150.00'
+                    'id': '5b53929f-4c56-498e-8b5c-cb369ad6c7bb',
+                    'title': 'Букет Максим',
+                    'description': 'Красивый авторский букет',
+                    'image_urls': [
+                        'https://cdn.posiflora.online/6866/images/z/c100ab6f89d894c05fd34ceb9a0899a3c7c2b312.jpg',
+                        'https://cdn.posiflora.online/6866/images/z/c100ab6f89d894c05fd34ceb9a0899a3c7c2b312_medium.jpg'
+                    ],
+                    'variants': [
+                        {'size': 'S', 'price': 4050},
+                        {'size': 'M', 'price': 3150},
+                        {'size': 'L', 'price': 5200}
+                    ]
                 },
                 response_only=True,
             ),
@@ -55,7 +55,7 @@ class ProductDetailView(APIView):
     def get(self, request, product_id):
         try:
             service = get_product_service()
-            product = service.get_product_by_id(product_id)
+            product = service.get_specification_by_id(product_id)
 
             serializer = CategoryProductSerializer(product)
             return Response(serializer.data, status=status.HTTP_200_OK)
