@@ -91,13 +91,10 @@ class PosifloraProductService:
         image_url = self._get_image_url_from_included(product_data, included)
         category_name = self._get_category_from_included(product_data, included)
 
-        # SKU: берём docNo если есть, иначе сам id
         sku = attributes.get("docNo") or product_id
 
-        # Цена из trueSaleAmount -> saleAmount -> amount (для букетов)
         price = attributes.get("trueSaleAmount") or attributes.get("saleAmount") or attributes.get("amount")
 
-        # Доступность из поля public
         available = bool(attributes.get("public", False))
 
         return {
@@ -118,31 +115,6 @@ class PosifloraProductService:
             "true_sale_amount": attributes.get("trueSaleAmount"),
             "status": attributes.get("status"),
         }
-
-
-    def get_product_by_id(self, product_id: str) -> Dict:
-        """
-        Получить конкретный товар по ID
-
-        Args:
-            product_id: ID товара в Posiflora
-
-        Returns:
-            Данные товара
-        """
-        url = self._build_url(f"{self.BASE_PATH}/{product_id}")
-
-        response = requests.get(
-            url,
-            headers=self._get_headers(),
-        )
-        response.raise_for_status()
-        payload = response.json()
-
-        product_data = payload.get("data", {})
-        included = payload.get("included", [])
-
-        return self._parse_product(product_data, included)
 
 
     def fetch_bouquets(self) -> List[Dict]:
