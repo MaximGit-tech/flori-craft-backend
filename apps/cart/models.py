@@ -19,6 +19,7 @@ class CartItem(models.Model):
         related_name='items'
     )
     product_id = models.CharField(max_length=64)
+    # здесь дописать остальные параметры товара (не забыть, что variant null=True и blank=True)
 
     class Meta:
         unique_together = ('cart', 'product_id')

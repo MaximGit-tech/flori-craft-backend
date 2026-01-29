@@ -484,13 +484,6 @@ class VerifySmsLoginView(APIView):
             )
 
 
-class LogoutView(APIView):
-    def post(self, request):
-        response = Response({'status': 'ok'})
-        response.delete_cookie('user_id')
-        return response
-
-
 class ProfileView(APIView):
     @extend_schema(
         summary="Получить профиль пользователя",
