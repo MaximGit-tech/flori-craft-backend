@@ -1,9 +1,8 @@
 from collections import defaultdict
 import re
-import requests
 from typing import Dict, List, Optional
 from django.conf import settings
-from .tokens import get_session
+from .tokens import make_request_with_retry
 
 
 SIZE_PATTERN = re.compile(r"\s(S|M|L)$")
@@ -15,15 +14,12 @@ class PosifloraProductService:
     BASE_PATH = "/bouquets?page%5Bnumber%5D=1&page%5Bsize%5D=12&sort=-price&urlPath=floricraft"
     SHOP_API_BASE = "/shop/api/v1"
 
-    def __init__(self):
-        self.session = get_session()
-
-    def _get_headers(self) -> Dict[str, str]:
-        """Получить заголовки для запроса к API"""
+    @staticmethod
+    def _get_headers() -> Dict[str, str]:
+        """Получить базовые заголовки для запроса к API (без Authorization)"""
         return {
             "Content-Type": "application/vnd.api+json",
             "Accept": "application/vnd.api+json",
-            "Authorization": f"Bearer {self.session.access_token}",
         }
 
     def _build_url(self, path: str) -> str:
@@ -141,12 +137,13 @@ class PosifloraProductService:
             "urlPath": "floricraft"
         }
 
-        response = requests.get(
+        response = make_request_with_retry(
+            'GET',
             url,
             headers=self._get_headers(),
             params=params,
+            timeout=10
         )
-        response.raise_for_status()
         payload = response.json()
 
         bouquets_data = payload.get("data", [])
@@ -218,12 +215,13 @@ class PosifloraProductService:
             "filter[status]": "on"
         }
 
-        response = requests.get(
+        response = make_request_with_retry(
+            'GET',
             url,
             headers=self._get_headers(),
             params=params,
+            timeout=10
         )
-        response.raise_for_status()
         payload = response.json()
 
         specifications_data = payload.get("data", [])
@@ -369,12 +367,13 @@ class PosifloraProductService:
             "include": "category,specVariants.variant,specVariants.variant.tags,specVariants.specVariantPrices,images",
         }
 
-        response = requests.get(
+        response = make_request_with_retry(
+            'GET',
             url,
             headers=self._get_headers(),
             params=params,
+            timeout=10
         )
-        response.raise_for_status()
         payload = response.json()
 
         spec = payload.get("data", {})
