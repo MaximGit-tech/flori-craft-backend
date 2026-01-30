@@ -1,8 +1,12 @@
 from collections import defaultdict
 import re
+import logging
+import requests
 from typing import Dict, List, Optional
 from django.conf import settings
 from .tokens import make_request_with_retry
+
+logger = logging.getLogger(__name__)
 
 
 SIZE_PATTERN = re.compile(r"\s(S|M|L)$")
@@ -461,8 +465,6 @@ class PosifloraProductService:
                 "price": 4500
             }
         """
-        import requests
-
         try:
             url = self._build_url(f"/specifications/{product_id}")
             params = {
@@ -481,11 +483,15 @@ class PosifloraProductService:
 
         except requests.exceptions.HTTPError as e:
             if e.response.status_code == 404:
+                logger.info(f"Product {product_id} not found in specifications, searching in bouquets...")
+
                 try:
                     bouquets = self.fetch_bouquets()
+                    logger.info(f"Fetched {len(bouquets)} bouquets")
 
                     for bouquet in bouquets:
                         if bouquet.get("id") == product_id:
+                            logger.info(f"Found bouquet with id {product_id}")
                             return {
                                 "id": bouquet.get("id"),
                                 "title": bouquet.get("title", ""),
@@ -494,11 +500,16 @@ class PosifloraProductService:
                                 "price": bouquet.get("price", 0)
                             }
 
+                    # Выводим доступные ID для отладки
+                    available_ids = [b.get("id") for b in bouquets[:5]]
+                    logger.warning(f"Product {product_id} not found. Available IDs (first 5): {available_ids}")
+
                     raise RuntimeError(f"Product with id {product_id} not found")
 
                 except RuntimeError:
                     raise
                 except Exception as bouquet_error:
+                    logger.error(f"Error fetching bouquets: {bouquet_error}")
                     raise RuntimeError(f"Product with id {product_id} not found in specifications")
 
             raise 
