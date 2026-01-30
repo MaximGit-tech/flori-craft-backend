@@ -346,8 +346,15 @@ class PosifloraProductService:
 
         Returns:
             Словарь с данными продукта
+
+        Raises:
+            ValueError: Если data отсутствует или равен null
         """
-        spec = payload.get("data", {})
+        spec = payload.get("data")
+
+        # Если data равен None или отсутствует - это не валидный ответ
+        if spec is None:
+            raise ValueError("Invalid API response: 'data' is null or missing")
         included = payload.get("included", [])
 
         spec_id = spec.get("id")
@@ -481,16 +488,51 @@ class PosifloraProductService:
             payload = response.json()
             return self._parse_product_response(payload)
 
+        except ValueError as ve:
+            print(f"[DEBUG] Invalid response from specifications: {ve}")
+            print(f"[DEBUG] Searching in bouquets instead...")
+
+            try:
+                bouquets = self.fetch_bouquets()
+                print(f"[DEBUG] Fetched {len(bouquets)} bouquets")
+
+                for bouquet in bouquets:
+                    bouquet_id = bouquet.get("id")
+                    if bouquet_id == product_id:
+                        print(f"[DEBUG] Found bouquet with id {product_id}")
+                        return {
+                            "id": bouquet.get("id"),
+                            "title": bouquet.get("title", ""),
+                            "description": bouquet.get("description", ""),
+                            "image_urls": bouquet.get("image_urls", []),
+                            "price": bouquet.get("price", 0)
+                        }
+
+                available_ids = [b.get("id") for b in bouquets[:5]]
+                print(f"[DEBUG] Product {product_id} not found. Available IDs: {available_ids}")
+                raise RuntimeError(f"Product with id {product_id} not found")
+
+            except RuntimeError:
+                raise
+            except Exception as e:
+                print(f"[DEBUG] Error fetching bouquets: {e}")
+                raise RuntimeError(f"Product with id {product_id} not found")
+
         except requests.exceptions.HTTPError as e:
             if e.response.status_code == 404:
+                print(f"[DEBUG] Product {product_id} not found in specifications, searching in bouquets...")
                 logger.info(f"Product {product_id} not found in specifications, searching in bouquets...")
 
                 try:
                     bouquets = self.fetch_bouquets()
+                    print(f"[DEBUG] Fetched {len(bouquets)} bouquets")
                     logger.info(f"Fetched {len(bouquets)} bouquets")
 
                     for bouquet in bouquets:
-                        if bouquet.get("id") == product_id:
+                        bouquet_id = bouquet.get("id")
+                        print(f"[DEBUG] Comparing: '{bouquet_id}' == '{product_id}' ? {bouquet_id == product_id}")
+                        if bouquet_id == product_id:
+                            print(f"[DEBUG] Found bouquet with id {product_id}")
                             logger.info(f"Found bouquet with id {product_id}")
                             return {
                                 "id": bouquet.get("id"),
@@ -500,8 +542,8 @@ class PosifloraProductService:
                                 "price": bouquet.get("price", 0)
                             }
 
-                    # Выводим доступные ID для отладки
                     available_ids = [b.get("id") for b in bouquets[:5]]
+                    print(f"[DEBUG] Product {product_id} not found. Available IDs (first 5): {available_ids}")
                     logger.warning(f"Product {product_id} not found. Available IDs (first 5): {available_ids}")
 
                     raise RuntimeError(f"Product with id {product_id} not found")
@@ -509,6 +551,7 @@ class PosifloraProductService:
                 except RuntimeError:
                     raise
                 except Exception as bouquet_error:
+                    print(f"[DEBUG] Error fetching bouquets: {bouquet_error}")
                     logger.error(f"Error fetching bouquets: {bouquet_error}")
                     raise RuntimeError(f"Product with id {product_id} not found in specifications")
 
