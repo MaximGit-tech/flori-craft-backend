@@ -1,5 +1,5 @@
 from django.urls import path
-from .views import SendSmsView, VerifySmsRegisterView, LogoutView, ProfileView, VerifySmsLoginView, CheckPhoneView
+from .views import SendSmsView, VerifySmsRegisterView, ProfileView, VerifySmsLoginView, CheckPhoneView
 
 urlpatterns = [
     path("send_sms/", SendSmsView.as_view()),

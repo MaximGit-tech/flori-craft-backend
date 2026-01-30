@@ -13,13 +13,21 @@ class Cart(models.Model):
 
 
 class CartItem(models.Model):
+    SIZE_CHOICES = [
+        ('L', 'Large'),
+        ('M', 'Medium'),
+        ('S', 'Small')
+    ]
+
     cart = models.ForeignKey(
         Cart,
         on_delete=models.CASCADE,
         related_name='items'
     )
     product_id = models.CharField(max_length=64)
-    # здесь дописать остальные параметры товара (не забыть, что variant null=True и blank=True)
+    name = models.CharField(max_length=255, null=True, blank=True)
+    size = models.CharField(max_length=1, choices=SIZE_CHOICES)
+    price = models.DecimalField(max_digits=10, decimal_places=2)
 
     class Meta:
-        unique_together = ('cart', 'product_id')
+        unique_together = ('cart', 'product_id', 'size')
