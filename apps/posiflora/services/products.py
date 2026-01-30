@@ -333,49 +333,16 @@ class PosifloraProductService:
 
         return {"categories": result_categories}
 
-
-    def get_specification_by_id(self, product_id: str) -> Dict:
+    def _parse_product_response(self, payload: Dict) -> Dict:
         """
-        Получить конкретную спецификацию (букет) по ID в формате CategoryProductSerializer
+        Парсинг ответа API в единый формат продукта
 
         Args:
-            product_id: ID спецификации
+            payload: JSON ответ от Posiflora API
 
         Returns:
-            Данные продукта в формате:
-            {
-                "id": "uuid",
-                "title": "Букет Максим",
-                "description": "",
-                "image_urls": ["url1", "url2"],
-                "variants": [
-                    {"size": "S", "price": 4050},
-                    {"size": "M", "price": 3150}
-                ]
-            }
-            или
-            {
-                "id": "uuid",
-                "title": "Ваза",
-                "description": "",
-                "image_urls": ["url1"],
-                "price": 4500
-            }
+            Словарь с данными продукта
         """
-        url = self._build_url(f"/specifications/{product_id}")
-        params = {
-            "include": "category,specVariants.variant,specVariants.variant.tags,specVariants.specVariantPrices,images",
-        }
-
-        response = make_request_with_retry(
-            'GET',
-            url,
-            headers=self._get_headers(),
-            params=params,
-            timeout=10
-        )
-        payload = response.json()
-
         spec = payload.get("data", {})
         included = payload.get("included", [])
 
@@ -463,6 +430,78 @@ class PosifloraProductService:
                 product_dict["price"] = min_price if min_price is not None else (max_price or 0)
 
         return product_dict
+
+    def get_specification_by_id(self, product_id: str) -> Dict:
+        """
+        Получить конкретную спецификацию (букет) по ID в формате CategoryProductSerializer
+
+        Сначала ищет в /specifications, если не найдено - ищет в /bouquets
+
+        Args:
+            product_id: ID спецификации или букета
+
+        Returns:
+            Данные продукта в формате:
+            {
+                "id": "uuid",
+                "title": "Букет Максим",
+                "description": "",
+                "image_urls": ["url1", "url2"],
+                "variants": [
+                    {"size": "S", "price": 4050},
+                    {"size": "M", "price": 3150}
+                ]
+            }
+            или
+            {
+                "id": "uuid",
+                "title": "Ваза",
+                "description": "",
+                "image_urls": ["url1"],
+                "price": 4500
+            }
+        """
+        import requests
+
+        try:
+            url = self._build_url(f"/specifications/{product_id}")
+            params = {
+                "include": "category,specVariants.variant,specVariants.variant.tags,specVariants.specVariantPrices,images",
+            }
+
+            response = make_request_with_retry(
+                'GET',
+                url,
+                headers=self._get_headers(),
+                params=params,
+                timeout=10
+            )
+            payload = response.json()
+            return self._parse_product_response(payload)
+
+        except requests.exceptions.HTTPError as e:
+            if e.response.status_code == 404:
+                try:
+                    url = self._build_shop_url(f"/bouquets/{product_id}")
+                    params = {
+                        "include": "category,specVariants.variant,specVariants.variant.tags,specVariants.specVariantPrices,images",
+                    }
+
+                    response = make_request_with_retry(
+                        'GET',
+                        url,
+                        headers=self._get_headers(),
+                        params=params,
+                        timeout=10
+                    )
+                    payload = response.json()
+                    return self._parse_product_response(payload)
+
+                except requests.exceptions.HTTPError as bouquet_error:
+                    raise RuntimeError(f"Product with id {product_id} not found in specifications or bouquets")
+
+            raise 
+
 
 
 def get_product_service() -> PosifloraProductService:

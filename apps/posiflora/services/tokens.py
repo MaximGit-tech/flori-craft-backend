@@ -70,7 +70,6 @@ def create_new_session() -> PosifloraSession:
         if not access_token or not refresh_token:
             raise RuntimeError('Invalid response from Posiflora API (missing tokens)')
 
-        # Парсим expires_at
         if expire_at and isinstance(expire_at, str):
             try:
                 expires_at = datetime.fromisoformat(expire_at)
@@ -81,7 +80,6 @@ def create_new_session() -> PosifloraSession:
         else:
             expires_at = timezone.now() + timedelta(hours=24)
 
-        # Удаляем старые сессии и создаем новую
         PosifloraSession.objects.all().delete()
 
         session = PosifloraSession.objects.create(
@@ -113,17 +111,14 @@ def get_session(force_refresh: bool = False) -> PosifloraSession:
     """
     session = PosifloraSession.objects.first()
 
-    # Если сессии нет - создаем новую
     if not session:
         logger.info('No Posiflora session found, creating new one...')
         return create_new_session()
 
-    # Если нужно обновить или сессия истекла
     if force_refresh or session.is_expired():
         try:
             session = refresh_session(session)
         except RuntimeError as e:
-            # Если refresh token истек - создаем новую сессию
             if 'Refresh token истек' in str(e):
                 logger.warning('Refresh token expired, creating new session...')
                 return create_new_session()
