@@ -482,23 +482,24 @@ class PosifloraProductService:
         except requests.exceptions.HTTPError as e:
             if e.response.status_code == 404:
                 try:
-                    url = self._build_shop_url(f"/bouquets/{product_id}")
-                    params = {
-                        "include": "category,specVariants.variant,specVariants.variant.tags,specVariants.specVariantPrices,images",
-                    }
+                    bouquets = self.fetch_bouquets()
 
-                    response = make_request_with_retry(
-                        'GET',
-                        url,
-                        headers=self._get_headers(),
-                        params=params,
-                        timeout=10
-                    )
-                    payload = response.json()
-                    return self._parse_product_response(payload)
+                    for bouquet in bouquets:
+                        if bouquet.get("id") == product_id:
+                            return {
+                                "id": bouquet.get("id"),
+                                "title": bouquet.get("title", ""),
+                                "description": bouquet.get("description", ""),
+                                "image_urls": bouquet.get("image_urls", []),
+                                "price": bouquet.get("price", 0)
+                            }
 
-                except requests.exceptions.HTTPError as bouquet_error:
-                    raise RuntimeError(f"Product with id {product_id} not found in specifications or bouquets")
+                    raise RuntimeError(f"Product with id {product_id} not found")
+
+                except RuntimeError:
+                    raise
+                except Exception as bouquet_error:
+                    raise RuntimeError(f"Product with id {product_id} not found in specifications")
 
             raise 
 
