@@ -8,9 +8,99 @@ from ..models import PosifloraSession
 logger = logging.getLogger(__name__)
 
 
+def create_new_session() -> PosifloraSession:
+    """
+    Создать новую сессию Posiflora через API
+
+    Returns:
+        Новая сессия
+
+    Raises:
+        RuntimeError: Если не удалось создать сессию
+    """
+    from django.conf import settings
+    from datetime import datetime, timedelta
+    from django.utils import timezone
+
+    username = getattr(settings, 'POSIFLORA_USER', None)
+    password = getattr(settings, 'POSIFLORA_PASSWORD', None)
+
+    if not username or not password:
+        raise RuntimeError(
+            'Posiflora credentials not configured. '
+            'Set POSIFLORA_USER and POSIFLORA_PASSWORD in settings.'
+        )
+
+    base_url = getattr(
+        settings,
+        'POSIFLORA_URL',
+        'https://floricraft.posiflora.com/api/v1'
+    )
+    sessions_url = f"{base_url}/sessions"
+
+    logger.info('Creating new Posiflora session...')
+
+    try:
+        response = requests.post(
+            sessions_url,
+            headers={
+                'Content-Type': 'application/vnd.api+json',
+                'Accept': 'application/vnd.api+json',
+            },
+            json={
+                'data': {
+                    'type': 'sessions',
+                    'attributes': {
+                        'username': username,
+                        'password': password,
+                    }
+                }
+            },
+            timeout=10
+        )
+
+        response.raise_for_status()
+        data = response.json()
+        attributes = data.get('data', {}).get('attributes', {})
+
+        access_token = attributes.get('accessToken')
+        refresh_token = attributes.get('refreshToken')
+        expire_at = attributes.get('expireAt') or attributes.get('expireAT')
+
+        if not access_token or not refresh_token:
+            raise RuntimeError('Invalid response from Posiflora API (missing tokens)')
+
+        # Парсим expires_at
+        if expire_at and isinstance(expire_at, str):
+            try:
+                expires_at = datetime.fromisoformat(expire_at)
+                if expires_at.tzinfo is None:
+                    expires_at = timezone.make_aware(expires_at, timezone.utc)
+            except (ValueError, AttributeError):
+                expires_at = timezone.now() + timedelta(hours=24)
+        else:
+            expires_at = timezone.now() + timedelta(hours=24)
+
+        # Удаляем старые сессии и создаем новую
+        PosifloraSession.objects.all().delete()
+
+        session = PosifloraSession.objects.create(
+            access_token=access_token,
+            refresh_token=refresh_token,
+            expires_at=expires_at,
+        )
+
+        logger.info('New Posiflora session created successfully')
+        return session
+
+    except requests.exceptions.RequestException as e:
+        logger.error(f'Failed to create Posiflora session: {e}')
+        raise RuntimeError(f'Failed to create Posiflora session: {e}') from e
+
+
 def get_session(force_refresh: bool = False) -> PosifloraSession:
     """
-    Получить актуальную сессию Posiflora
+    Получить актуальную сессию Posiflora с автоматическим созданием при необходимости
 
     Args:
         force_refresh: Принудительно обновить сессию, даже если не истекла
@@ -19,18 +109,25 @@ def get_session(force_refresh: bool = False) -> PosifloraSession:
         Актуальная сессия
 
     Raises:
-        RuntimeError: Если сессия не инициализирована
+        RuntimeError: Если не удалось получить/создать сессию
     """
     session = PosifloraSession.objects.first()
 
+    # Если сессии нет - создаем новую
     if not session:
-        raise RuntimeError(
-            'Posiflora session not initialized. '
-            'Run: python manage.py init_posiflora_session'
-        )
+        logger.info('No Posiflora session found, creating new one...')
+        return create_new_session()
 
+    # Если нужно обновить или сессия истекла
     if force_refresh or session.is_expired():
-        session = refresh_session(session)
+        try:
+            session = refresh_session(session)
+        except RuntimeError as e:
+            # Если refresh token истек - создаем новую сессию
+            if 'Refresh token истек' in str(e):
+                logger.warning('Refresh token expired, creating new session...')
+                return create_new_session()
+            raise
 
     return session
 
