@@ -53,7 +53,6 @@ class ProductDetailView(APIView):
         ]
     )
     def get(self, request, product_id):
-        import traceback
         try:
             service = get_product_service()
             product = service.get_specification_by_id(product_id)
@@ -62,17 +61,8 @@ class ProductDetailView(APIView):
             return Response(serializer.data, status=status.HTTP_200_OK)
 
         except Exception as e:
-            import logging
-            logger = logging.getLogger(__name__)
-            logger.error(f"Error getting product {product_id}: {str(e)}")
-            logger.error(traceback.format_exc())
-
             return Response(
-                {
-                    'error': 'Product not found',
-                    'detail': str(e),
-                    'traceback': traceback.format_exc() if request.user.is_staff else None
-                },
+                {'error': 'Product not found', 'detail': str(e)},
                 status=status.HTTP_404_NOT_FOUND
             )
 

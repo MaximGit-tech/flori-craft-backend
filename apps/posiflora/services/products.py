@@ -1,12 +1,9 @@
 from collections import defaultdict
 import re
-import logging
 import requests
 from typing import Dict, List, Optional
 from django.conf import settings
 from .tokens import make_request_with_retry
-
-logger = logging.getLogger(__name__)
 
 
 SIZE_PATTERN = re.compile(r"\s(S|M|L)$")
@@ -488,18 +485,12 @@ class PosifloraProductService:
             payload = response.json()
             return self._parse_product_response(payload)
 
-        except ValueError as ve:
-            print(f"[DEBUG] Invalid response from specifications: {ve}")
-            print(f"[DEBUG] Searching in bouquets instead...")
-
+        except ValueError:
             try:
                 bouquets = self.fetch_bouquets()
-                print(f"[DEBUG] Fetched {len(bouquets)} bouquets")
 
                 for bouquet in bouquets:
-                    bouquet_id = bouquet.get("id")
-                    if bouquet_id == product_id:
-                        print(f"[DEBUG] Found bouquet with id {product_id}")
+                    if bouquet.get("id") == product_id:
                         return {
                             "id": bouquet.get("id"),
                             "title": bouquet.get("title", ""),
@@ -508,32 +499,20 @@ class PosifloraProductService:
                             "price": bouquet.get("price", 0)
                         }
 
-                available_ids = [b.get("id") for b in bouquets[:5]]
-                print(f"[DEBUG] Product {product_id} not found. Available IDs: {available_ids}")
                 raise RuntimeError(f"Product with id {product_id} not found")
 
             except RuntimeError:
                 raise
-            except Exception as e:
-                print(f"[DEBUG] Error fetching bouquets: {e}")
+            except Exception:
                 raise RuntimeError(f"Product with id {product_id} not found")
 
         except requests.exceptions.HTTPError as e:
             if e.response.status_code == 404:
-                print(f"[DEBUG] Product {product_id} not found in specifications, searching in bouquets...")
-                logger.info(f"Product {product_id} not found in specifications, searching in bouquets...")
-
                 try:
                     bouquets = self.fetch_bouquets()
-                    print(f"[DEBUG] Fetched {len(bouquets)} bouquets")
-                    logger.info(f"Fetched {len(bouquets)} bouquets")
 
                     for bouquet in bouquets:
-                        bouquet_id = bouquet.get("id")
-                        print(f"[DEBUG] Comparing: '{bouquet_id}' == '{product_id}' ? {bouquet_id == product_id}")
-                        if bouquet_id == product_id:
-                            print(f"[DEBUG] Found bouquet with id {product_id}")
-                            logger.info(f"Found bouquet with id {product_id}")
+                        if bouquet.get("id") == product_id:
                             return {
                                 "id": bouquet.get("id"),
                                 "title": bouquet.get("title", ""),
@@ -542,18 +521,12 @@ class PosifloraProductService:
                                 "price": bouquet.get("price", 0)
                             }
 
-                    available_ids = [b.get("id") for b in bouquets[:5]]
-                    print(f"[DEBUG] Product {product_id} not found. Available IDs (first 5): {available_ids}")
-                    logger.warning(f"Product {product_id} not found. Available IDs (first 5): {available_ids}")
-
                     raise RuntimeError(f"Product with id {product_id} not found")
 
                 except RuntimeError:
                     raise
-                except Exception as bouquet_error:
-                    print(f"[DEBUG] Error fetching bouquets: {bouquet_error}")
-                    logger.error(f"Error fetching bouquets: {bouquet_error}")
-                    raise RuntimeError(f"Product with id {product_id} not found in specifications")
+                except Exception:
+                    raise RuntimeError(f"Product with id {product_id} not found")
 
             raise 
 
