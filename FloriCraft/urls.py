@@ -22,7 +22,6 @@ urlpatterns = [
     path('api/custom_auth/', include('apps.custom_auth.urls')),
     path('api/cart/', include('apps.cart.urls')),
     path('api/posiflora/', include('apps.posiflora.urls')),
-    path('api/orders/', include('apps.orders.urls')),
 
     path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
     path('api/docs/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),
