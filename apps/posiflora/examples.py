@@ -186,16 +186,13 @@ def get_cached_product(product_id, cache_time=300):
     """
     cache_key = f'posiflora_product_{product_id}'
 
-    # Проверяем кэш
     product = cache.get(cache_key)
     if product is not None:
         return product
 
-    # Получаем из API
     service = get_product_service()
     product = service.get_product_by_id(product_id)
 
-    # Сохраняем в кэш
     cache.set(cache_key, product, cache_time)
 
     return product
@@ -215,28 +212,24 @@ def get_cached_products_page(page=1, page_size=50, cache_time=300):
     """
     cache_key = f'posiflora_products_page_{page}_{page_size}'
 
-    # Проверяем кэш
     result = cache.get(cache_key)
     if result is not None:
         return result
 
-    # Получаем из API
     service = get_product_service()
     result = service.get_products_page(page=page, page_size=page_size)
 
-    # Сохраняем в кэш
     cache.set(cache_key, result, cache_time)
 
     return result
 
 
-# Использование в view:
 class CachedProductCatalogView(APIView):
     """Каталог с кэшированием"""
 
     def get(self, request):
         page = int(request.query_params.get('page', 1))
-        result = get_cached_products_page(page=page, cache_time=600)  # 10 минут
+        result = get_cached_products_page(page=page, cache_time=600)
         return Response(result)
 
 

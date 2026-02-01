@@ -19,12 +19,11 @@ from django.urls import path, include
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView, SpectacularRedocView
 
 urlpatterns = [
-    # API endpoints
     path('api/custom_auth/', include('apps.custom_auth.urls')),
     path('api/cart/', include('apps.cart.urls')),
     path('api/posiflora/', include('apps.posiflora.urls')),
+    path('api/orders/', include('apps.orders.urls')),
 
-    # Swagger/OpenAPI documentation
     path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
     path('api/docs/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),
     path('api/redoc/', SpectacularRedocView.as_view(url_name='schema'), name='redoc'),

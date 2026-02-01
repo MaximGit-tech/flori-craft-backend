@@ -1,5 +1,4 @@
 from django.db import models
-
 from apps.custom_auth.models import CustomUser
 
 
@@ -13,6 +12,22 @@ class Order(models.Model):
         ('cancelled', 'Отменен'),
     ]
 
+    DELIVERY_TIME_CHOICES = [
+        ('1', '10:00-12:00'),
+        ('2', '12:00-14:00'),
+        ('3', '14:00-16:00'),
+        ('4', '16:00-18:00'),
+        ('5', '18:00-20:00'),
+        ('6', '20:00-22:00'),
+    ]
+
+    DELIVERY_DISTRICT_CHOICES = [
+        ('JK', 'FiliGrad, Only, Beregovoy'),
+        ('FILI', 'Fili'),
+        ('MKAD', 'MKAD'),
+        ('NMKAD', 'Outside MKAD'),
+    ]
+
     user = models.ForeignKey(
         CustomUser,
         on_delete=models.SET_NULL,
@@ -21,12 +36,51 @@ class Order(models.Model):
         related_name='orders'
     )
 
-    name = models.CharField(max_length=255)
-    phone = models.CharField(max_length=20)
+    sender_name = models.CharField(max_length=255)
+    sender_phone = models.CharField(max_length=20)
     
-    address = models.TextField()
-    apartment_number = models.CharField(max_length=10, null=True, blank=True)
-    entrance_number = models.CharField(max_length=10, null=True, blank=True)
+    full_address = models.TextField()
+    apartment = models.CharField(max_length=10, null=True, blank=True)
+    entrance = models.CharField(max_length=10, null=True, blank=True)
     floor = models.CharField(max_length=10, null=True, blank=True)
     intercom = models.CharField(max_length=10, null=True, blank=True)
+
+    date = models.CharField(max_length=10)
+    time = models.CharField(choices=DELIVERY_TIME_CHOICES)
+    district = models.CharField(choices=DELIVERY_DISTRICT_CHOICES)
+
+    recipent_name = models.CharField(max_length=255, null=True, blank=True)
+    recipent_phone = models.CharField(max_length=20, null=True, blank=True)
+
+    postcart = models.TextField(null=True, blank=True)
+
+    total_amount = models.DecimalField(max_digits=10, decimal_places=2)
+    delivery_cost = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    paid_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+
+class OrderItem(models.Model):
+    SIZE_CHOICES = [
+        ('L', 'Large'),
+        ('M', 'Medium'),
+        ('S', 'Small')
+    ]
+
+    order = models.ForeignKey(
+        Order,
+        on_delete=models.CASCADE,
+        related_name='items'
+    )
+
+    product_id = models.CharField(max_length=50)
+    name = models.CharField(max_length=255)
+    size = models.CharField(max_length=1, choices=SIZE_CHOICES)
+    price = models.DecimalField(max_digits=10, decimal_places=2)
 
