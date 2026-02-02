@@ -64,7 +64,7 @@ class CartView(APIView):
         ]
     )
     def get(self, request):
-        if not request.user:
+        if not request.user.is_authenticated:
             return Response(
                 {'error': 'unauthorized'},
                 status=401
@@ -144,7 +144,7 @@ class CartItemView(APIView):
         ]
     )
     def post(self, request):
-        if not request.user:
+        if not request.user.is_authenticated:
             return Response(
                 {'error': 'unauthorized'},
                 status=401
@@ -227,7 +227,7 @@ class CartItemView(APIView):
         ]
     )
     def delete(self, request):
-        if not request.user:
+        if not request.user.is_authenticated:
             return Response(
                 {'error': 'unauthorized'},
                 status=401
