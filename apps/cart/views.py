@@ -64,12 +64,6 @@ class CartView(APIView):
         ]
     )
     def get(self, request):
-        if not request.user.is_authenticated:
-            return Response(
-                {'error': 'unauthorized'},
-                status=401
-            )
-
         items = get_items(request.user)
         serializer = CartItemSerializer(items, many=True)
 
@@ -144,12 +138,6 @@ class CartItemView(APIView):
         ]
     )
     def post(self, request):
-        if not request.user.is_authenticated:
-            return Response(
-                {'error': 'unauthorized'},
-                status=401
-            )
-
         product_id = request.data.get('product_id')
         if not product_id:
             return Response(
@@ -227,12 +215,6 @@ class CartItemView(APIView):
         ]
     )
     def delete(self, request):
-        if not request.user.is_authenticated:
-            return Response(
-                {'error': 'unauthorized'},
-                status=401
-            )
-
         product_id = request.data.get('product_id')
         if not product_id:
             return Response(
