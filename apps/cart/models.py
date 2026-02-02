@@ -28,6 +28,7 @@ class CartItem(models.Model):
     name = models.CharField(max_length=255, null=True, blank=True)
     size = models.CharField(max_length=1, choices=SIZE_CHOICES)
     price = models.DecimalField(max_digits=10, decimal_places=2)
+    image = models.CharField(max_length=100)
 
     class Meta:
         unique_together = ('cart', 'product_id', 'size')
