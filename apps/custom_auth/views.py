@@ -316,7 +316,7 @@ class VerifySmsRegisterView(APIView):
                 max_age=60 * 60 * 24 * 7,
                 httponly=True,
                 secure=True,
-                samesite='Lax',
+                samesite=None,
             )
 
             return response
@@ -470,7 +470,7 @@ class VerifySmsLoginView(APIView):
                 max_age=60 * 60 * 24 * 7,
                 httponly=True,
                 secure=True,
-                samesite='Lax',
+                samesite=None,
             )
 
             return response

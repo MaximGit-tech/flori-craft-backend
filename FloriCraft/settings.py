@@ -22,6 +22,10 @@ POSIFLORA_URL = os.getenv('POSIFLORA_URL', 'https://floricraft.posiflora.com/api
 POSIFLORA_USER = os.getenv('POSIFLORA_USER')
 POSIFLORA_PASSWORD = os.getenv('POSIFLORA_PASSWORD')
 
+# YooKassa settings
+YOOKASSA_SHOP_ID = os.getenv('YOOKASSA_SHOP_ID')
+YOOKASSA_SECRET_KEY = os.getenv('YOOKASSA_SECRET_KEY')
+
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
