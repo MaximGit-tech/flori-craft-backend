@@ -2,11 +2,14 @@ from drf_spectacular.utils import extend_schema, OpenApiExample, OpenApiParamete
 from drf_spectacular.types import OpenApiTypes
 from rest_framework.views import APIView
 from rest_framework.response import Response
+from rest_framework.permissions import IsAuthenticated
 from .services.db_cart import get_items
 from apps.cart.serializers import CartItemSerializer
 
 
 class CartView(APIView):
+    permission_classes = [IsAuthenticated]  # Добавлена проверка авторизации
+    
     @extend_schema(
         summary="Получить корзину",
         description="Возвращает список всех товаров в корзине пользователя",
@@ -73,6 +76,8 @@ class CartView(APIView):
 
 
 class CartItemView(APIView):
+    permission_classes = [IsAuthenticated] 
+    
     @extend_schema(
         summary="Добавить товар в корзину",
         description="Добавляет товар в корзину пользователя по product_id",
