@@ -309,15 +309,14 @@ class VerifySmsRegisterView(APIView):
                 'gender': user.gender
             })
 
-            response.set_signed_cookie(
-                key='user_id',
-                value=str(user.id),
-                salt='user-auth',
-                max_age=60 * 60 * 24 * 7,
-                httponly=True,
-                secure=True,
-                samesite=None,
-            )
+            response.set_signed_cookie(                                                                                                                                                             
+                key='user_id',                                                                                                                                                                      
+                value=str(user.id),                                                                                                                                                                 
+                salt='user-auth',                                                                                                                                                                   
+                max_age=60 * 60 * 24 * 7,                                                                                                                                                           
+                httponly=True,                                                                                                                                                                      
+                secure=True,                                                                                                                                                                        
+                )  
 
             return response
 
@@ -463,15 +462,14 @@ class VerifySmsLoginView(APIView):
                 'gender': user.gender or ''
             })
 
-            response.set_signed_cookie(
-                key='user_id',
-                value=str(user.id),
-                salt='user-auth',
-                max_age=60 * 60 * 24 * 7,
-                httponly=True,
-                secure=True,
-                samesite=None,
-            )
+            response.set_signed_cookie(                                                                                                                                                             
+                key='user_id',                                                                                                                                                                      
+                value=str(user.id),                                                                                                                                                                 
+                salt='user-auth',                                                                                                                                                                   
+                max_age=60 * 60 * 24 * 7,                                                                                                                                                           
+                httponly=True,                                                                                                                                                                      
+                secure=True,                                                                                                                                                                        
+                )                                                                                                                                                                                       
 
             return response
 
