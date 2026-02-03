@@ -5,7 +5,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from .models import CustomUser
 from .services.sms_code import generate_sms, verify_sms
-from django.core.signing import Signer
+from django.core.signing import Signer, BadSignature
 
 class SendSmsView(APIView):
     authentication_classes = []
@@ -304,11 +304,15 @@ class VerifySmsRegisterView(APIView):
 
             user, _ = CustomUser.objects.get_or_create(phone=phone)
 
+            signer = Signer(salt='user-auth')
+            signed_value = signer.sign(str(user.id))
+
             response = Response({
                 'id': user.id,
                 'phone': user.phone,
                 'name': user.name or '',
-                'gender': user.gender or ''
+                'gender': user.gender or '',
+                'cookie_id': signed_value
             })
 
             return response
@@ -448,11 +452,15 @@ class VerifySmsLoginView(APIView):
         try:
             user, _ = CustomUser.objects.get_or_create(phone=phone)
 
+            signer = Signer(salt='user-auth')
+            signed_value = signer.sign(str(user.id))
+
             response = Response({
                 'id': user.id,
                 'phone': user.phone,
                 'name': user.name or '',
-                'gender': user.gender or ''
+                'gender': user.gender or '',
+                'cookie_id': signed_value
             })
 
             return response
@@ -471,16 +479,7 @@ class VerifySmsLoginView(APIView):
 class ProfileView(APIView):
     @extend_schema(
         summary="Получить профиль пользователя",
-        description="Возвращает информацию о пользователе по его ID",
-        parameters=[
-            OpenApiParameter(
-                name='user_id',
-                type=OpenApiTypes.INT,
-                location=OpenApiParameter.QUERY,
-                description='ID пользователя',
-                required=True
-            )
-        ],
+        description="Возвращает информацию о пользователе по подписанной cookie user_id",
         responses={
             200: {
                 'type': 'object',
@@ -497,12 +496,12 @@ class ProfileView(APIView):
                     }
                 }
             },
-            400: {
+            401: {
                 'type': 'object',
                 'properties': {
                     'error': {
                         'type': 'string',
-                        'example': 'user_id is required'
+                        'example': 'user_id cookie is required'
                     }
                 }
             },
@@ -528,10 +527,10 @@ class ProfileView(APIView):
                 status_codes=['200']
             ),
             OpenApiExample(
-                'Ошибка: отсутствует user_id',
-                value={'error': 'user_id is required'},
+                'Ошибка: отсутствует cookie',
+                value={'error': 'user_id cookie is required'},
                 response_only=True,
-                status_codes=['400']
+                status_codes=['401']
             ),
             OpenApiExample(
                 'Ошибка: пользователь не найден',
@@ -542,12 +541,12 @@ class ProfileView(APIView):
         ]
     )
     def get(self, request):
-        user_id = request.query_params.get("user_id")
-
-        if not user_id:
+        try:
+            user_id = request.get_signed_cookie('user_id', salt='user-auth')
+        except (KeyError, BadSignature):
             return Response(
-                {"error": "user_id is required"},
-                status=status.HTTP_400_BAD_REQUEST
+                {"error": "user_id cookie is required"},
+                status=status.HTTP_401_UNAUTHORIZED
             )
 
         try:
