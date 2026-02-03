@@ -21,6 +21,7 @@ from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView, Sp
 urlpatterns = [
     path('api/custom_auth/', include('apps.custom_auth.urls')),
     path('api/cart/', include('apps.cart.urls')),
+    path('api/orders/', include('apps.orders.urls')),
     path('api/posiflora/', include('apps.posiflora.urls')),
 
     path('api/schema/', SpectacularAPIView.as_view(), name='schema'),

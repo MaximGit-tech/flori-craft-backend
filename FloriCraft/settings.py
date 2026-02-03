@@ -53,7 +53,6 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    # 'apps.custom_auth.middleware.CookieUserMiddleware',  # Отключен - DRF использует authentication classes
 ]
 
 CORS_ALLOWED_ORIGINS = [
@@ -128,6 +127,7 @@ SPECTACULAR_SETTINGS = {
     'TAGS': [
         {'name': 'Posiflora Products', 'description': 'Управление товарами из Posiflora API'},
         {'name': 'Cart', 'description': 'Управление корзиной'},
+        {'name': 'Orders', 'description': 'Управление заказами и платежами'},
         {'name': 'Auth', 'description': 'Аутентификация и авторизация'},
     ],
 }
