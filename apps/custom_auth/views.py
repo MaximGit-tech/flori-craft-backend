@@ -304,26 +304,11 @@ class VerifySmsRegisterView(APIView):
 
             user, _ = CustomUser.objects.get_or_create(phone=phone)
 
-            response.set_signed_cookie(
-                key='user_id',
-                value=str(user.id),
-                salt='user-auth',
-                max_age=60 * 60 * 24 * 7,
-                httponly=True,
-                secure=False,
-                samesite='None'
-            )
-
-            signer = Signer(salt='user-auth')
-
-            signed_value = signer.sign(str(user.id));
-
             response = Response({
                 'id': user.id,
                 'phone': user.phone,
                 'name': user.name or '',
-                'gender': user.gender or '',
-                'cookie_id': signed_value or ''
+                'gender': user.gender or ''
             })
 
             return response
@@ -463,26 +448,11 @@ class VerifySmsLoginView(APIView):
         try:
             user, _ = CustomUser.objects.get_or_create(phone=phone)
 
-            response.set_signed_cookie(
-                key='user_id',
-                value=str(user.id),
-                salt='user-auth',
-                max_age=60 * 60 * 24 * 7,
-                httponly=True,
-                secure=False,
-                samesite='None'
-            )
-
-            signer = Signer(salt='user-auth')
-
-            signed_value = signer.sign(str(user.id));
-
             response = Response({
                 'id': user.id,
                 'phone': user.phone,
                 'name': user.name or '',
-                'gender': user.gender or '',
-                'cookie_id': signed_value or ''
+                'gender': user.gender or ''
             })
 
             return response
