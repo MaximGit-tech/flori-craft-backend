@@ -8,11 +8,20 @@ from apps.cart.serializers import CartItemSerializer
 
 
 class CartView(APIView):
-    permission_classes = [IsAuthenticated]  # Добавлена проверка авторизации
-    
+    permission_classes = [IsAuthenticated]
+
     @extend_schema(
         summary="Получить корзину",
         description="Возвращает список всех товаров в корзине пользователя",
+        parameters=[
+            OpenApiParameter(
+                name='user_id',
+                type=OpenApiTypes.STR,
+                location=OpenApiParameter.QUERY,
+                description='ID пользователя (опционально, для совместимости). Должен совпадать с ID аутентифицированного пользователя.',
+                required=False
+            )
+        ],
         responses={
             200: {
                 'type': 'object',
@@ -40,6 +49,15 @@ class CartView(APIView):
                         'example': 'unauthorized'
                     }
                 }
+            },
+            403: {
+                'type': 'object',
+                'properties': {
+                    'error': {
+                        'type': 'string',
+                        'example': 'Access denied'
+                    }
+                }
             }
         },
         tags=['Cart'],
@@ -63,10 +81,24 @@ class CartView(APIView):
                 value={'error': 'unauthorized'},
                 response_only=True,
                 status_codes=['401']
+            ),
+            OpenApiExample(
+                'Ошибка: доступ запрещен',
+                value={'error': 'Access denied'},
+                response_only=True,
+                status_codes=['403']
             )
         ]
     )
     def get(self, request):
+        user_id = request.GET.get('user_id')
+
+        if user_id and str(request.user.id) != user_id:
+            return Response(
+                {'error': 'Access denied'},
+                status=403
+            )
+
         items = get_items(request.user)
         serializer = CartItemSerializer(items, many=True)
 
@@ -76,8 +108,8 @@ class CartView(APIView):
 
 
 class CartItemView(APIView):
-    permission_classes = [IsAuthenticated] 
-    
+    permission_classes = [IsAuthenticated]
+
     @extend_schema(
         summary="Добавить товар в корзину",
         description="Добавляет товар в корзину пользователя по product_id",
