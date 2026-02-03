@@ -5,7 +5,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from .models import CustomUser
 from .services.sms_code import generate_sms, verify_sms
-
+from django.core.signing import Signer
 
 class SendSmsView(APIView):
     authentication_classes = []
@@ -302,12 +302,7 @@ class VerifySmsRegisterView(APIView):
         try:
             user, _ = CustomUser.objects.get_or_create(phone=phone, name=name, gender=gender)
 
-            response = Response({
-                'id': user.id,
-                'phone': user.phone,
-                'name': user.name or '',
-                'gender': user.gender
-            })
+            user, _ = CustomUser.objects.get_or_create(phone=phone)
 
             response.set_signed_cookie(
                 key='user_id',
@@ -316,8 +311,20 @@ class VerifySmsRegisterView(APIView):
                 max_age=60 * 60 * 24 * 7,
                 httponly=True,
                 secure=False,
-                samesite='None',
+                samesite='None'
             )
+
+            signer = Signer(salt='user-auth')
+
+            signed_value = signer.sign(str(user.id));
+
+            response = Response({
+                'id': user.id,
+                'phone': user.phone,
+                'name': user.name or '',
+                'gender': user.gender or '',
+                'cookie_id': signed_value or ''
+            })
 
             return response
 
@@ -456,13 +463,6 @@ class VerifySmsLoginView(APIView):
         try:
             user, _ = CustomUser.objects.get_or_create(phone=phone)
 
-            response = Response({
-                'id': user.id,
-                'phone': user.phone,
-                'name': user.name or '',
-                'gender': user.gender or ''
-            })
-
             response.set_signed_cookie(
                 key='user_id',
                 value=str(user.id),
@@ -471,7 +471,19 @@ class VerifySmsLoginView(APIView):
                 httponly=True,
                 secure=False,
                 samesite='None'
-            )                                                                                                                                                                                      
+            )
+
+            signer = Signer(salt='user-auth')
+
+            signed_value = signer.sign(str(user.id));
+
+            response = Response({
+                'id': user.id,
+                'phone': user.phone,
+                'name': user.name or '',
+                'gender': user.gender or '',
+                'cookie_id': signed_value or ''
+            })
 
             return response
 
