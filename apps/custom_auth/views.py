@@ -541,11 +541,19 @@ class ProfileView(APIView):
         ]
     )
     def get(self, request):
-        try:
-            user_id = request.get_signed_cookie('user_id', salt='user-auth')
-        except (KeyError, BadSignature):
+        raw_cookie = request.COOKIES.get('user_id')
+        if not raw_cookie:
             return Response(
                 {"error": "user_id cookie is required"},
+                status=status.HTTP_401_UNAUTHORIZED
+            )
+
+        try:
+            signer = Signer(salt='user-auth')
+            user_id = signer.unsign(raw_cookie)
+        except BadSignature:
+            return Response(
+                {"error": "invalid signature"},
                 status=status.HTTP_401_UNAUTHORIZED
             )
 
