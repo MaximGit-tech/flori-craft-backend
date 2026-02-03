@@ -315,7 +315,7 @@ class VerifySmsRegisterView(APIView):
                 salt='user-auth',
                 max_age=60 * 60 * 24 * 7,
                 httponly=True,
-                secure=True,
+                secure=False,
                 samesite='None',
             )
 
@@ -469,7 +469,7 @@ class VerifySmsLoginView(APIView):
                 salt='user-auth',
                 max_age=60 * 60 * 24 * 7,
                 httponly=True,
-                secure=True,
+                secure=False,
                 samesite='None'
             )                                                                                                                                                                                      
 
