@@ -14,9 +14,9 @@ class Cart(models.Model):
 
 class CartItem(models.Model):
     SIZE_CHOICES = [
-        ('L', 'Large'),
+        ('S', 'Small'),
         ('M', 'Medium'),
-        ('S', 'Small')
+        ('L', 'Large'),
     ]
 
     cart = models.ForeignKey(
@@ -25,10 +25,10 @@ class CartItem(models.Model):
         related_name='items'
     )
     product_id = models.CharField(max_length=64)
-    name = models.CharField(max_length=255, null=True, blank=True)
-    size = models.CharField(max_length=1, choices=SIZE_CHOICES)
+    title = models.CharField(max_length=255)
+    size = models.CharField(max_length=1, choices=SIZE_CHOICES, null=True, blank=True)
     price = models.DecimalField(max_digits=10, decimal_places=2)
-    image = models.CharField(max_length=100)
+    image = models.CharField(max_length=500)
 
     class Meta:
         unique_together = ('cart', 'product_id', 'size')

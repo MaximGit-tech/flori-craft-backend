@@ -3,8 +3,9 @@ from drf_spectacular.types import OpenApiTypes
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
-from .services.db_cart import get_items
-from apps.cart.serializers import CartItemSerializer
+from .services.db_cart import get_items, add_item, remove_item
+from apps.cart.serializers import CartItemSerializer, CartItemInputSerializer
+from apps.custom_auth.models import CustomUser
 
 
 class CartView(APIView):
@@ -108,44 +109,40 @@ class CartView(APIView):
 class CartItemView(APIView):
     @extend_schema(
         summary="Добавить товар в корзину",
-        description="Добавляет товар в корзину пользователя по product_id",
-        request={
-            'type': 'object',
-            'properties': {
-                'product_id': {
-                    'type': 'string',
-                    'description': 'ID товара для добавления',
-                    'example': 'prod-123'
-                }
-            },
-            'required': ['product_id']
-        },
+        description="Добавляет товар в корзину пользователя",
+        parameters=[
+            OpenApiParameter(
+                name='user_id',
+                type=OpenApiTypes.STR,
+                location=OpenApiParameter.QUERY,
+                description='ID пользователя',
+                required=True
+            )
+        ],
+        request=CartItemInputSerializer,
         responses={
             200: {
                 'type': 'object',
                 'properties': {
-                    'status': {
-                        'type': 'string',
-                        'example': 'ok'
-                    }
+                    'status': {'type': 'string', 'example': 'ok'}
                 }
             },
             400: {
                 'type': 'object',
                 'properties': {
-                    'error': {
-                        'type': 'string',
-                        'example': 'product_id required'
-                    }
+                    'error': {'type': 'string'}
                 }
             },
-            401: {
+            403: {
                 'type': 'object',
                 'properties': {
-                    'error': {
-                        'type': 'string',
-                        'example': 'unauthorized'
-                    }
+                    'error': {'type': 'string', 'example': 'Access denied'}
+                }
+            },
+            404: {
+                'type': 'object',
+                'properties': {
+                    'error': {'type': 'string', 'example': 'User not found'}
                 }
             }
         },
@@ -158,42 +155,55 @@ class CartItemView(APIView):
                 status_codes=['200']
             ),
             OpenApiExample(
-                'Ошибка: отсутствует product_id',
-                value={'error': 'product_id required'},
-                response_only=True,
-                status_codes=['400']
-            ),
-            OpenApiExample(
                 'Запрос добавления товара',
-                value={'product_id': 'prod-123'},
+                value={
+                    'product_id': 'prod-123',
+                    'title': 'Букет роз',
+                    'size': 'M',
+                    'price': 2500.00,
+                    'image': 'https://example.com/image.jpg'
+                },
                 request_only=True
             )
         ]
     )
     def post(self, request):
-        product_id = request.data.get('product_id')
-        if not product_id:
-            return Response(
-                {'error': 'product_id required'},
-                status=400
-            )
+        user_id = request.GET.get('user_id')
+        if not user_id:
+            return Response({'error': 'user_id required'}, status=400)
 
-        from .services.db_cart import add_item
-        add_item(request.user, product_id)
+        try:
+            user = CustomUser.objects.get(id=user_id)
+        except CustomUser.DoesNotExist:
+            return Response({'error': 'User not found'}, status=404)
 
+        if request.user.id != user.id:
+            return Response({'error': 'Access denied'}, status=403)
+
+        serializer = CartItemInputSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response({'error': serializer.errors}, status=400)
+
+        add_item(user, serializer.validated_data)
         return Response({'status': 'ok'})
 
     @extend_schema(
         summary="Удалить товар из корзины",
-        description="Удаляет товар из корзины пользователя по product_id",
+        description="Удаляет товар из корзины пользователя по product_id и size",
+        parameters=[
+            OpenApiParameter(
+                name='user_id',
+                type=OpenApiTypes.STR,
+                location=OpenApiParameter.QUERY,
+                description='ID пользователя',
+                required=True
+            )
+        ],
         request={
             'type': 'object',
             'properties': {
-                'product_id': {
-                    'type': 'string',
-                    'description': 'ID товара для удаления',
-                    'example': 'prod-123'
-                }
+                'product_id': {'type': 'string', 'example': 'prod-123'},
+                'size': {'type': 'string', 'enum': ['S', 'M', 'L'], 'example': 'M'}
             },
             'required': ['product_id']
         },
@@ -201,28 +211,25 @@ class CartItemView(APIView):
             200: {
                 'type': 'object',
                 'properties': {
-                    'status': {
-                        'type': 'string',
-                        'example': 'ok'
-                    }
+                    'status': {'type': 'string', 'example': 'ok'}
                 }
             },
             400: {
                 'type': 'object',
                 'properties': {
-                    'error': {
-                        'type': 'string',
-                        'example': 'product_id required'
-                    }
+                    'error': {'type': 'string'}
                 }
             },
-            401: {
+            403: {
                 'type': 'object',
                 'properties': {
-                    'error': {
-                        'type': 'string',
-                        'example': 'unauthorized'
-                    }
+                    'error': {'type': 'string', 'example': 'Access denied'}
+                }
+            },
+            404: {
+                'type': 'object',
+                'properties': {
+                    'error': {'type': 'string', 'example': 'User not found'}
                 }
             }
         },
@@ -235,27 +242,32 @@ class CartItemView(APIView):
                 status_codes=['200']
             ),
             OpenApiExample(
-                'Ошибка: отсутствует product_id',
-                value={'error': 'product_id required'},
-                response_only=True,
-                status_codes=['400']
-            ),
-            OpenApiExample(
                 'Запрос удаления товара',
-                value={'product_id': 'prod-123'},
+                value={'product_id': 'prod-123', 'size': 'M'},
                 request_only=True
             )
         ]
     )
     def delete(self, request):
+        user_id = request.GET.get('user_id')
+        if not user_id:
+            return Response({'error': 'user_id required'}, status=400)
+
+        try:
+            user = CustomUser.objects.get(id=user_id)
+        except CustomUser.DoesNotExist:
+            return Response({'error': 'User not found'}, status=404)
+
+        if request.user.id != user.id:
+            return Response({'error': 'Access denied'}, status=403)
+
         product_id = request.data.get('product_id')
         if not product_id:
-            return Response(
-                {'error': 'product_id required'},
-                status=400
-            )
+            return Response({'error': 'product_id required'}, status=400)
 
-        from .services.db_cart import remove_item
-        remove_item(request.user, product_id)
-
+        item_data = {
+            'product_id': product_id,
+            'size': request.data.get('size'),
+        }
+        remove_item(user, item_data)
         return Response({'status': 'ok'})
