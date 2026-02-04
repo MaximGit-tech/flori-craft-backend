@@ -45,21 +45,17 @@ class CreateOrderView(APIView):
 
         try:
             with transaction.atomic():
-                # Получаем товары из запроса
                 items_data = serializer.validated_data.pop('items')
 
-                # Подсчитываем общую сумму
                 items_total = sum(Decimal(item['price']) for item in items_data)
                 delivery_cost = serializer.validated_data.get('delivery_cost', Decimal('0'))
                 total_amount = items_total + delivery_cost
 
-                # Создаем заказ
                 order = serializer.save(
                     user=request.user,
                     total_amount=total_amount
                 )
 
-                # Создаем товары заказа
                 order_items = [
                     OrderItem(
                         order=order,
@@ -72,14 +68,12 @@ class CreateOrderView(APIView):
                 ]
                 OrderItem.objects.bulk_create(order_items)
 
-                # Очищаем корзину пользователя
                 try:
                     cart = Cart.objects.get(user=request.user)
                     cart.items.all().delete()
                 except Cart.DoesNotExist:
                     pass
 
-                # Создаем платеж в ЮКассе
                 yookassa_service = YooKassaService()
 
                 # URL для возврата после оплаты (нужно будет настроить на фронтенде)
@@ -94,7 +88,6 @@ class CreateOrderView(APIView):
                     user_phone=serializer.validated_data.get('sender_phone')
                 )
 
-                # Сохраняем payment_id в заказе
                 order.payment_id = payment_result['payment_id']
                 order.save(update_fields=['payment_id'])
 
@@ -139,7 +132,6 @@ class CheckPaymentView(APIView):
             yookassa_service = YooKassaService()
             payment_info = yookassa_service.check_payment(order.payment_id)
 
-            # Обновляем статус заказа если платеж успешен
             if payment_info['paid'] and order.status == 'pending':
                 order.status = 'paid'
                 order.paid_at = timezone.now()
@@ -173,21 +165,29 @@ class YooKassaWebhookView(APIView):
     authentication_classes = []
 
     @extend_schema(
-        exclude=True  # Не показывать в документации API
+        exclude=True
     )
     def post(self, request):
+        client_ip = request.META.get('HTTP_X_FORWARDED_FOR')
+        if client_ip:
+            client_ip = client_ip.split(',')[0].strip()
+        else:
+            client_ip = request.META.get('REMOTE_ADDR')
+
+        yookassa_service = YooKassaService()
+        if not yookassa_service.verify_webhook_ip(client_ip):
+            logger.warning(f"Webhook от неавторизованного IP: {client_ip}")
+            return Response({'error': 'Unauthorized'}, status=status.HTTP_403_FORBIDDEN)
+
         try:
-            # Парсим данные от ЮКассы
             data = json.loads(request.body)
 
             logger.info(f"Получен webhook от ЮКассы: {data}")
 
-            # Проверяем тип события
             event_type = data.get('event')
             if event_type != 'payment.succeeded':
                 return Response({'status': 'ignored'}, status=status.HTTP_200_OK)
 
-            # Получаем данные платежа
             payment_object = data.get('object', {})
             payment_id = payment_object.get('id')
             payment_status = payment_object.get('status')
@@ -198,7 +198,6 @@ class YooKassaWebhookView(APIView):
                 logger.error("В webhook отсутствует order_id")
                 return Response({'error': 'Missing order_id'}, status=status.HTTP_400_BAD_REQUEST)
 
-            # Находим заказ и обновляем его статус
             try:
                 order = Order.objects.get(id=order_id, payment_id=payment_id)
 
