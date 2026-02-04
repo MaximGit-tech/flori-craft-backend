@@ -16,7 +16,7 @@ load_dotenv(BASE_DIR / '.env')
 
 SECRET_KEY = os.getenv('SECRET_KEY')
 DEBUG = os.getenv('DEBUG', 'True') == 'True'
-ALLOWED_HOSTS = ['flori-craft-backend-production.up.railway.app', '.railway.app', '127.0.0.1']
+ALLOWED_HOSTS = ['flori-craft-backend-production.up.railway.app', '.railway.app', '127.0.0.1', ".onrender.com"]
 
 POSIFLORA_URL = os.getenv('POSIFLORA_URL', 'https://floricraft.posiflora.com/api/v1')
 POSIFLORA_USER = os.getenv('POSIFLORA_USER')
