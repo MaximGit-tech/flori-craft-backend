@@ -3,9 +3,21 @@ from drf_spectacular.types import OpenApiTypes
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
+from django.core.signing import Signer, BadSignature
 from .services.db_cart import get_items, add_item, remove_item
 from apps.cart.serializers import CartItemSerializer, CartItemInputSerializer
 from apps.custom_auth.models import CustomUser
+
+
+def unsign_user_id(signed_user_id):
+    """Расшифровывает подписанный user_id из cookie."""
+    if not signed_user_id:
+        return None
+    try:
+        signer = Signer()
+        return signer.unsign(signed_user_id)
+    except BadSignature:
+        return None
 
 
 class CartView(APIView):
@@ -90,7 +102,8 @@ class CartView(APIView):
         ]
     )
     def get(self, request):
-        user_id = request.GET.get('user_id')
+        signed_user_id = request.GET.get('user_id')
+        user_id = unsign_user_id(signed_user_id) if signed_user_id else None
 
         if user_id and str(request.user.id) != user_id:
             return Response(
@@ -168,9 +181,10 @@ class CartItemView(APIView):
         ]
     )
     def post(self, request):
-        user_id = request.GET.get('user_id')
+        signed_user_id = request.GET.get('user_id')
+        user_id = unsign_user_id(signed_user_id)
         if not user_id:
-            return Response({'error': 'user_id required'}, status=400)
+            return Response({'error': 'user_id required or invalid signature'}, status=400)
 
         try:
             user = CustomUser.objects.get(id=user_id)
@@ -249,9 +263,10 @@ class CartItemView(APIView):
         ]
     )
     def delete(self, request):
-        user_id = request.GET.get('user_id')
+        signed_user_id = request.GET.get('user_id')
+        user_id = unsign_user_id(signed_user_id)
         if not user_id:
-            return Response({'error': 'user_id required'}, status=400)
+            return Response({'error': 'user_id required or invalid signature'}, status=400)
 
         try:
             user = CustomUser.objects.get(id=user_id)
