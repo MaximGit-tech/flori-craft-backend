@@ -262,6 +262,15 @@ class PosifloraProductService:
                     if img_url:
                         image_urls.append(img_url)
 
+            # Если не нашли изображения через relationships, пробуем attributes (как в bouquets)
+            if not image_urls:
+                if attributes.get("logo"):
+                    image_urls.append(attributes["logo"])
+                if attributes.get("logoMedium"):
+                    image_urls.append(attributes["logoMedium"])
+                if attributes.get("logoShop"):
+                    image_urls.append(attributes["logoShop"])
+
             spec_variants_data = relationships.get("specVariants", {}).get("data", [])
             variants = []
 
@@ -349,7 +358,6 @@ class PosifloraProductService:
         """
         spec = payload.get("data")
 
-        # Если data равен None или отсутствует - это не валидный ответ
         if spec is None:
             raise ValueError("Invalid API response: 'data' is null or missing")
         included = payload.get("included", [])
@@ -376,6 +384,14 @@ class PosifloraProductService:
                 img_url = img_attrs.get("url") or img_attrs.get("original") or img_attrs.get("path")
                 if img_url:
                     image_urls.append(img_url)
+
+        if not image_urls:
+            if attributes.get("logo"):
+                image_urls.append(attributes["logo"])
+            if attributes.get("logoMedium"):
+                image_urls.append(attributes["logoMedium"])
+            if attributes.get("logoShop"):
+                image_urls.append(attributes["logoShop"])
 
         spec_variants_data = relationships.get("specVariants", {}).get("data", [])
         variants = []
@@ -527,6 +543,7 @@ class PosifloraProductService:
                     raise
                 except Exception:
                     raise RuntimeError(f"Product with id {product_id} not found")
+
 
             raise 
 
