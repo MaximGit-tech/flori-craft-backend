@@ -1,9 +1,13 @@
 from collections import defaultdict
+import json
 import re
 import requests
+import logging
 from typing import Dict, List, Optional
 from django.conf import settings
 from .tokens import make_request_with_retry
+
+logger = logging.getLogger(__name__)
 
 
 SIZE_PATTERN = re.compile(r"\s(S|M|L)$")
@@ -228,6 +232,20 @@ class PosifloraProductService:
         specifications_data = payload.get("data", [])
         included = payload.get("included", [])
 
+        logger.info(f"[FETCH SPECS] Total specifications: {len(specifications_data)}")
+        logger.info(f"[FETCH SPECS] Total included items: {len(included)}")
+
+        # Логируем типы included элементов
+        included_types = {}
+        for item in included:
+            item_type = item.get("type")
+            included_types[item_type] = included_types.get(item_type, 0) + 1
+        logger.info(f"[FETCH SPECS] Included types: {included_types}")
+
+        # Логируем первый товар целиком для отладки
+        if specifications_data:
+            logger.info(f"[FETCH SPECS] First specification (full): {json.dumps(specifications_data[0], indent=2, ensure_ascii=False)}")
+
         included_index = {}
         for item in included:
             key = (item.get("type"), item.get("id"))
@@ -243,6 +261,10 @@ class PosifloraProductService:
             title = attributes.get("title", "")
             description = attributes.get("description", "")
 
+            logger.info(f"[SPEC {spec_id}] Title: {title}")
+            logger.info(f"[SPEC {spec_id}] Attributes keys: {list(attributes.keys())}")
+            logger.info(f"[SPEC {spec_id}] Relationships keys: {list(relationships.keys())}")
+
             category_data = relationships.get("category", {}).get("data")
             if category_data:
                 category_key = (category_data.get("type"), category_data.get("id"))
@@ -252,24 +274,35 @@ class PosifloraProductService:
                 category_name = "Без категории"
 
             images_data = relationships.get("images", {}).get("data", [])
+            logger.info(f"[SPEC {spec_id}] Images in relationships: {images_data}")
+
             image_urls = []
             for img_ref in images_data:
                 img_key = (img_ref.get("type"), img_ref.get("id"))
                 img_obj = included_index.get(img_key)
+                logger.info(f"[SPEC {spec_id}] Looking for image {img_key}, found: {img_obj is not None}")
                 if img_obj:
                     img_attrs = img_obj.get("attributes", {})
-                    img_url = img_attrs.get("url") or img_attrs.get("original") or img_attrs.get("path")
+                    logger.info(f"[SPEC {spec_id}] Image attributes: {img_attrs}")
+                    img_url = img_attrs.get("file") or img_attrs.get("fileMedium") or img_attrs.get("fileShop")
                     if img_url:
                         image_urls.append(img_url)
 
             # Если не нашли изображения через relationships, пробуем attributes (как в bouquets)
             if not image_urls:
+                logger.info(f"[SPEC {spec_id}] No images from relationships, checking attributes")
+                logger.info(f"[SPEC {spec_id}] logo: {attributes.get('logo')}")
+                logger.info(f"[SPEC {spec_id}] logoMedium: {attributes.get('logoMedium')}")
+                logger.info(f"[SPEC {spec_id}] logoShop: {attributes.get('logoShop')}")
+
                 if attributes.get("logo"):
                     image_urls.append(attributes["logo"])
                 if attributes.get("logoMedium"):
                     image_urls.append(attributes["logoMedium"])
                 if attributes.get("logoShop"):
                     image_urls.append(attributes["logoShop"])
+
+            logger.info(f"[SPEC {spec_id}] Final image_urls: {image_urls}")
 
             spec_variants_data = relationships.get("specVariants", {}).get("data", [])
             variants = []
@@ -362,6 +395,8 @@ class PosifloraProductService:
             raise ValueError("Invalid API response: 'data' is null or missing")
         included = payload.get("included", [])
 
+        logger.info(f"[PARSE RESPONSE] Total included items: {len(included)}")
+
         spec_id = spec.get("id")
         attributes = spec.get("attributes", {})
         relationships = spec.get("relationships", {})
@@ -369,29 +404,44 @@ class PosifloraProductService:
         title = attributes.get("title", "")
         description = attributes.get("description", "")
 
+        logger.info(f"[SINGLE SPEC {spec_id}] Title: {title}")
+        logger.info(f"[SINGLE SPEC {spec_id}] Attributes keys: {list(attributes.keys())}")
+        logger.info(f"[SINGLE SPEC {spec_id}] Relationships keys: {list(relationships.keys())}")
+
         included_index = {}
         for item in included:
             key = (item.get("type"), item.get("id"))
             included_index[key] = item
 
         images_data = relationships.get("images", {}).get("data", [])
+        logger.info(f"[SINGLE SPEC {spec_id}] Images in relationships: {images_data}")
+
         image_urls = []
         for img_ref in images_data:
             img_key = (img_ref.get("type"), img_ref.get("id"))
             img_obj = included_index.get(img_key)
+            logger.info(f"[SINGLE SPEC {spec_id}] Looking for image {img_key}, found: {img_obj is not None}")
             if img_obj:
                 img_attrs = img_obj.get("attributes", {})
-                img_url = img_attrs.get("url") or img_attrs.get("original") or img_attrs.get("path")
+                logger.info(f"[SINGLE SPEC {spec_id}] Image attributes: {img_attrs}")
+                img_url = img_attrs.get("file") or img_attrs.get("fileMedium") or img_attrs.get("fileShop")
                 if img_url:
                     image_urls.append(img_url)
 
         if not image_urls:
+            logger.info(f"[SINGLE SPEC {spec_id}] No images from relationships, checking attributes")
+            logger.info(f"[SINGLE SPEC {spec_id}] logo: {attributes.get('logo')}")
+            logger.info(f"[SINGLE SPEC {spec_id}] logoMedium: {attributes.get('logoMedium')}")
+            logger.info(f"[SINGLE SPEC {spec_id}] logoShop: {attributes.get('logoShop')}")
+
             if attributes.get("logo"):
                 image_urls.append(attributes["logo"])
             if attributes.get("logoMedium"):
                 image_urls.append(attributes["logoMedium"])
             if attributes.get("logoShop"):
                 image_urls.append(attributes["logoShop"])
+
+        logger.info(f"[SINGLE SPEC {spec_id}] Final image_urls: {image_urls}")
 
         spec_variants_data = relationships.get("specVariants", {}).get("data", [])
         variants = []
@@ -485,6 +535,8 @@ class PosifloraProductService:
                 "price": 4500
             }
         """
+        logger.info(f"[GET SPEC BY ID] Requesting product_id: {product_id}")
+
         try:
             url = self._build_url(f"/specifications/{product_id}")
             params = {
@@ -499,6 +551,9 @@ class PosifloraProductService:
                 timeout=10
             )
             payload = response.json()
+            logger.info(f"[GET SPEC BY ID] Received payload keys: {list(payload.keys())}")
+            logger.info(f"[GET SPEC BY ID] Full payload: {json.dumps(payload, indent=2, ensure_ascii=False)}")
+
             return self._parse_product_response(payload)
 
         except ValueError:
