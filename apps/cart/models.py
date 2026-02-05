@@ -14,6 +14,7 @@ class Cart(models.Model):
 
 class CartItem(models.Model):
     SIZE_CHOICES = [
+        ('', 'None'),
         ('S', 'Small'),
         ('M', 'Medium'),
         ('L', 'Large'),
@@ -26,7 +27,7 @@ class CartItem(models.Model):
     )
     product_id = models.CharField(max_length=64)
     title = models.CharField(max_length=255)
-    size = models.CharField(max_length=1, choices=SIZE_CHOICES, null=True, blank=True)
+    size = models.CharField(max_length=1, choices=SIZE_CHOICES, default='', blank=True)
     price = models.DecimalField(max_digits=10, decimal_places=2)
     image = models.CharField(max_length=500)
 
