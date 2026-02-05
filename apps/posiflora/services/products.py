@@ -165,10 +165,6 @@ class PosifloraProductService:
             image_urls = []
             if attributes.get("logo"):
                 image_urls.append(attributes["logo"])
-            if attributes.get("logoMedium"):
-                image_urls.append(attributes["logoMedium"])
-            if attributes.get("logoShop"):
-                image_urls.append(attributes["logoShop"])
 
             result.append({
                 "id": bouquet_id,
@@ -235,14 +231,12 @@ class PosifloraProductService:
         logger.info(f"[FETCH SPECS] Total specifications: {len(specifications_data)}")
         logger.info(f"[FETCH SPECS] Total included items: {len(included)}")
 
-        # Логируем типы included элементов
         included_types = {}
         for item in included:
             item_type = item.get("type")
             included_types[item_type] = included_types.get(item_type, 0) + 1
         logger.info(f"[FETCH SPECS] Included types: {included_types}")
 
-        # Логируем первый товар целиком для отладки
         if specifications_data:
             logger.info(f"[FETCH SPECS] First specification (full): {json.dumps(specifications_data[0], indent=2, ensure_ascii=False)}")
 
@@ -288,7 +282,6 @@ class PosifloraProductService:
                     if img_url:
                         image_urls.append(img_url)
 
-            # Если не нашли изображения через relationships, пробуем attributes (как в bouquets)
             if not image_urls:
                 logger.info(f"[SPEC {spec_id}] No images from relationships, checking attributes")
                 logger.info(f"[SPEC {spec_id}] logo: {attributes.get('logo')}")
