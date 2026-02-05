@@ -2,7 +2,6 @@ from drf_spectacular.utils import extend_schema, OpenApiExample, OpenApiParamete
 from drf_spectacular.types import OpenApiTypes
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated
 from django.core.signing import Signer, BadSignature
 from .services.db_cart import get_items, add_item, remove_item
 from apps.cart.serializers import CartItemSerializer, CartItemInputSerializer
@@ -14,14 +13,15 @@ def unsign_user_id(signed_user_id):
     if not signed_user_id:
         return None
     try:
-        signer = Signer()
+        signer = Signer(salt='user-auth')
         return signer.unsign(signed_user_id)
     except BadSignature:
         return None
 
 
 class CartView(APIView):
-    permission_classes = [IsAuthenticated]
+    authentication_classes = []
+    permission_classes = []
 
     @extend_schema(
         summary="Получить корзину",
@@ -105,15 +105,17 @@ class CartView(APIView):
     )
     def get(self, request):
         signed_user_id = request.GET.get('user_id')
-        user_id = unsign_user_id(signed_user_id) if signed_user_id else None
+        user_id = unsign_user_id(signed_user_id)
 
-        if user_id and str(request.user.id) != user_id:
-            return Response(
-                {'error': 'Access denied'},
-                status=403
-            )
+        if not user_id:
+            return Response({'error': 'user_id required or invalid signature'}, status=400)
 
-        items = get_items(request.user)
+        try:
+            user = CustomUser.objects.get(id=user_id)
+        except CustomUser.DoesNotExist:
+            return Response({'error': 'User not found'}, status=404)
+
+        items = get_items(user)
         serializer = CartItemSerializer(items, many=True)
 
         return Response({
@@ -122,7 +124,8 @@ class CartView(APIView):
 
 
 class CartItemView(APIView):
-    permission_classes = [IsAuthenticated]
+    authentication_classes = []
+    permission_classes = []
 
     @extend_schema(
         summary="Добавить товар в корзину",
@@ -194,9 +197,6 @@ class CartItemView(APIView):
             user = CustomUser.objects.get(id=user_id)
         except CustomUser.DoesNotExist:
             return Response({'error': 'User not found'}, status=404)
-
-        if request.user.id != user.id:
-            return Response({'error': 'Access denied'}, status=403)
 
         serializer = CartItemInputSerializer(data=request.data)
         if not serializer.is_valid():
@@ -276,9 +276,6 @@ class CartItemView(APIView):
             user = CustomUser.objects.get(id=user_id)
         except CustomUser.DoesNotExist:
             return Response({'error': 'User not found'}, status=404)
-
-        if request.user.id != user.id:
-            return Response({'error': 'Access denied'}, status=403)
 
         product_id = request.data.get('product_id')
         if not product_id:
