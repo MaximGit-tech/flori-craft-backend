@@ -21,6 +21,8 @@ def unsign_user_id(signed_user_id):
 
 
 class CartView(APIView):
+    permission_classes = [IsAuthenticated]
+
     @extend_schema(
         summary="Получить корзину",
         description="Возвращает список всех товаров в корзине пользователя",
@@ -120,6 +122,8 @@ class CartView(APIView):
 
 
 class CartItemView(APIView):
+    permission_classes = [IsAuthenticated]
+
     @extend_schema(
         summary="Добавить товар в корзину",
         description="Добавляет товар в корзину пользователя",
