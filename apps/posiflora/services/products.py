@@ -174,24 +174,32 @@ class PosifloraProductService:
             description = attributes.get("description", "")
 
             logger.info(f"[BOUQUET {bouquet_id}] Title: {title}")
-            logger.info(f"[BOUQUET {bouquet_id}] Attributes keys: {list(attributes.keys())}")
-            logger.info(f"[BOUQUET {bouquet_id}] Relationships keys: {list(relationships.keys())}")
-
-            images_data = relationships.get("images", {}).get("data", [])
-            logger.info(f"[BOUQUET {bouquet_id}] Images in relationships: {images_data}")
+            logger.info(f"[BOUQUET {bouquet_id}] Relationships: {json.dumps(relationships, indent=2, ensure_ascii=False)}")
 
             image_urls = []
-            for img_ref in images_data:
-                img_key = (img_ref.get("type"), img_ref.get("id"))
-                img_obj = included_index.get(img_key)
-                logger.info(f"[BOUQUET {bouquet_id}] Looking for image {img_key}, found: {img_obj is not None}")
-                if img_obj:
-                    img_attrs = img_obj.get("attributes", {})
-                    logger.info(f"[BOUQUET {bouquet_id}] Image attributes: {img_attrs}")
-                    img_url = img_attrs.get("file") or img_attrs.get("fileMedium") or img_attrs.get("fileShop")
-                    if img_url:
-                        image_urls.append(img_url)
 
+            images_data = relationships.get("images", {}).get("data", [])
+            if images_data:
+                logger.info(f"[BOUQUET {bouquet_id}] Found {len(images_data)} images in relationships")
+                for img_ref in images_data:
+                    img_key = (img_ref.get("type"), img_ref.get("id"))
+                    img_obj = included_index.get(img_key)
+                    if img_obj:
+                        img_attrs = img_obj.get("attributes", {})
+                        logger.info(f"[BOUQUET {bouquet_id}] Image attributes: {img_attrs}")
+                        img_url = img_attrs.get("file") or img_attrs.get("fileMedium") or img_attrs.get("fileShop")
+                        if img_url:
+                            image_urls.append(img_url)
+                            logger.info(f"[BOUQUET {bouquet_id}] Added image: {img_url}")
+
+            if not image_urls:
+                logger.info(f"[BOUQUET {bouquet_id}] No images in relationships, checking attributes")
+                if attributes.get("logo"):
+                    image_urls.append(attributes["logo"])
+                if attributes.get("logoMedium"):
+                    image_urls.append(attributes["logoMedium"])
+                if attributes.get("logoShop"):
+                    image_urls.append(attributes["logoShop"])
 
             logger.info(f"[BOUQUET {bouquet_id}] Final image_urls: {image_urls}")
 
