@@ -139,7 +139,8 @@ class PosifloraProductService:
             "page[number]": 1,
             "page[size]": 100,
             "sort": "-price",
-            "urlPath": "floricraft"
+            "urlPath": "floricraft",
+            "include": "images"
         }
 
         response = make_request_with_retry(
@@ -152,19 +153,49 @@ class PosifloraProductService:
         payload = response.json()
 
         bouquets_data = payload.get("data", [])
+        included = payload.get("included", [])
+
+        logger.info(f"[FETCH BOUQUETS] Total bouquets: {len(bouquets_data)}")
+        logger.info(f"[FETCH BOUQUETS] Total included items: {len(included)}")
+
+        included_index = {}
+        for item in included:
+            key = (item.get("type"), item.get("id"))
+            included_index[key] = item
+
         result = []
 
         for bouquet in bouquets_data:
-            bouquet_id = bouquet.get("id", "")
+            bouquet_id = bouquet.get("id")
             attributes = bouquet.get("attributes", {})
+            relationships = bouquet.get("relationships", {})
 
             title = attributes.get("title", "")
             description = attributes.get("description", "")
-            price = attributes.get("saleAmount", 0)
+
+            logger.info(f"[BOUQUET {bouquet_id}] Title: {title}")
+            logger.info(f"[BOUQUET {bouquet_id}] Attributes keys: {list(attributes.keys())}")
+            logger.info(f"[BOUQUET {bouquet_id}] Relationships keys: {list(relationships.keys())}")
+
+            images_data = relationships.get("images", {}).get("data", [])
+            logger.info(f"[BOUQUET {bouquet_id}] Images in relationships: {images_data}")
 
             image_urls = []
-            if attributes.get("logo"):
-                image_urls.append(attributes["logo"])
+            for img_ref in images_data:
+                img_key = (img_ref.get("type"), img_ref.get("id"))
+                img_obj = included_index.get(img_key)
+                logger.info(f"[BOUQUET {bouquet_id}] Looking for image {img_key}, found: {img_obj is not None}")
+                if img_obj:
+                    img_attrs = img_obj.get("attributes", {})
+                    logger.info(f"[BOUQUET {bouquet_id}] Image attributes: {img_attrs}")
+                    img_url = img_attrs.get("file") or img_attrs.get("fileMedium") or img_attrs.get("fileShop")
+                    if img_url:
+                        image_urls.append(img_url)
+
+
+            logger.info(f"[BOUQUET {bouquet_id}] Final image_urls: {image_urls}")
+
+            price = attributes.get("trueSaleAmount") or attributes.get("saleAmount") or attributes.get("amount") or 0
 
             result.append({
                 "id": bouquet_id,
@@ -281,19 +312,6 @@ class PosifloraProductService:
                     img_url = img_attrs.get("file") or img_attrs.get("fileMedium") or img_attrs.get("fileShop")
                     if img_url:
                         image_urls.append(img_url)
-
-            if not image_urls:
-                logger.info(f"[SPEC {spec_id}] No images from relationships, checking attributes")
-                logger.info(f"[SPEC {spec_id}] logo: {attributes.get('logo')}")
-                logger.info(f"[SPEC {spec_id}] logoMedium: {attributes.get('logoMedium')}")
-                logger.info(f"[SPEC {spec_id}] logoShop: {attributes.get('logoShop')}")
-
-                if attributes.get("logo"):
-                    image_urls.append(attributes["logo"])
-                if attributes.get("logoMedium"):
-                    image_urls.append(attributes["logoMedium"])
-                if attributes.get("logoShop"):
-                    image_urls.append(attributes["logoShop"])
 
             logger.info(f"[SPEC {spec_id}] Final image_urls: {image_urls}")
 
