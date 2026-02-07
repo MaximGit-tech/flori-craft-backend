@@ -45,26 +45,46 @@ class CreateOrderView(APIView):
 
         try:
             with transaction.atomic():
-                items_data = serializer.validated_data.pop('items')
+                validated_data = serializer.validated_data
 
-                items_total = sum(Decimal(item['price']) for item in items_data)
-                delivery_cost = serializer.validated_data.get('delivery_cost', Decimal('0'))
-                total_amount = items_total + delivery_cost
+                cart_items = validated_data['cartItems']
+                delivery = validated_data['delivery']
+                recipient = validated_data['recipient']
+                sender = validated_data['sender']
+                postcard = validated_data.get('postcard', '')
+                delivery_price = validated_data['deliveryPrice']
+                cart_price = validated_data['cartPrice']
+                full_price = validated_data['fullPrice']
 
-                order = serializer.save(
+                order = Order.objects.create(
                     user=request.user,
-                    total_amount=total_amount
+                    sender_name=sender['name'],
+                    sender_phone=sender['phoneNumber'],
+                    full_address=delivery['fullAddress'],
+                    apartment=delivery.get('apartment', ''),
+                    entrance=delivery.get('entrance', ''),
+                    floor=delivery.get('floor', ''),
+                    date=delivery['date'],
+                    time=delivery['time'],
+                    district=delivery['district'],
+                    recipent_name=recipient['name'],
+                    recipent_phone=recipient['phoneNumber'],
+                    postcart=postcard,
+                    total_amount=full_price,
+                    delivery_cost=delivery_price
                 )
 
                 order_items = [
                     OrderItem(
                         order=order,
-                        product_id=item['product_id'],
-                        name=item['name'],
+                        product_id=item['productId'],
+                        item_id=item['id'],
+                        name=item['title'],
                         size=item['size'],
-                        price=item['price']
+                        price=item['price'],
+                        image_urls=item['image_urls']
                     )
-                    for item in items_data
+                    for item in cart_items
                 ]
                 OrderItem.objects.bulk_create(order_items)
 
@@ -76,16 +96,15 @@ class CreateOrderView(APIView):
 
                 yookassa_service = YooKassaService()
 
-                # URL для возврата после оплаты (нужно будет настроить на фронтенде)
-                return_url = request.data.get('return_url', 'https://flori-craft-front.vercel.app/orders/success')
+                return_url = request.data.get('return_url', 'https://flori-craft-front.vercel.app/')
 
                 payment_result = yookassa_service.create_payment(
-                    amount=total_amount,
+                    amount=full_price,
                     order_id=order.id,
                     description=f"Оплата заказа №{order.id}",
                     return_url=return_url,
                     user_email=getattr(request.user, 'email', None),
-                    user_phone=serializer.validated_data.get('sender_phone')
+                    user_phone=sender['phoneNumber']
                 )
 
                 order.payment_id = payment_result['payment_id']
@@ -96,7 +115,7 @@ class CreateOrderView(APIView):
                     'payment_id': payment_result['payment_id'],
                     'payment_url': payment_result['payment_url'],
                     'status': payment_result['status'],
-                    'amount': str(total_amount)
+                    'amount': str(full_price)
                 }, status=status.HTTP_201_CREATED)
 
         except Exception as e:
@@ -219,20 +238,6 @@ class YooKassaWebhookView(APIView):
         except Exception as e:
             logger.error(f"Ошибка обработки webhook: {str(e)}")
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-
-class OrderListView(APIView):
-    """Получение списка заказов пользователя"""
-    permission_classes = [IsAuthenticated]
-
-    @extend_schema(
-        responses={200: OrderDetailSerializer(many=True)},
-        tags=['Orders']
-    )
-    def get(self, request):
-        orders = Order.objects.filter(user=request.user).prefetch_related('items')
-        serializer = OrderDetailSerializer(orders, many=True)
-        return Response(serializer.data, status=status.HTTP_200_OK)
 
 
 class OrderDetailView(APIView):

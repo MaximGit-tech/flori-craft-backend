@@ -6,41 +6,52 @@ class OrderItemSerializer(serializers.ModelSerializer):
     """Сериализатор для товара в заказе"""
     class Meta:
         model = OrderItem
-        fields = ['id', 'product_id', 'name', 'size', 'price']
+        fields = ['id', 'product_id', 'item_id', 'name', 'size', 'price', 'image_urls']
         read_only_fields = ['id']
 
 
-class OrderItemCreateSerializer(serializers.Serializer):
-    """Сериализатор для создания товара в заказе из корзины"""
-    product_id = serializers.CharField(max_length=50)
-    name = serializers.CharField(max_length=255)
-    size = serializers.ChoiceField(choices=['L', 'M', 'S'])
+class CartItemSerializer(serializers.Serializer):
+    """Сериализатор для элемента корзины"""
+    productId = serializers.CharField(max_length=50)
+    id = serializers.CharField(max_length=50)
+    size = serializers.ChoiceField(choices=['S', 'M', 'L'], required=False, allow_blank=True)
     price = serializers.DecimalField(max_digits=10, decimal_places=2)
+    title = serializers.CharField(max_length=255)
+    image_urls = serializers.ListField(
+        child=serializers.URLField(),
+        allow_empty=True
+    )
 
 
-class OrderCreateSerializer(serializers.ModelSerializer):
+class DeliverySerializer(serializers.Serializer):
+    """Сериализатор для информации о доставке"""
+    fullAddress = serializers.CharField()
+    apartment = serializers.CharField(required=False, allow_blank=True)
+    entrance = serializers.CharField(required=False, allow_blank=True)
+    floor = serializers.CharField(required=False, allow_blank=True)
+    date = serializers.CharField()
+    time = serializers.CharField()
+    district = serializers.CharField()
+
+
+class RecipientSerializer(serializers.Serializer):
+    """Сериализатор для информации о получателе/отправителе"""
+    name = serializers.CharField(max_length=255)
+    phoneNumber = serializers.CharField(max_length=20)
+
+
+class OrderCreateSerializer(serializers.Serializer):
     """Сериализатор для создания заказа"""
-    items = OrderItemCreateSerializer(many=True, write_only=True)
+    cartItems = CartItemSerializer(many=True)
+    delivery = DeliverySerializer()
+    recipient = RecipientSerializer()
+    sender = RecipientSerializer()
+    postcard = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    deliveryPrice = serializers.DecimalField(max_digits=10, decimal_places=2)
+    cartPrice = serializers.DecimalField(max_digits=10, decimal_places=2)
+    fullPrice = serializers.DecimalField(max_digits=10, decimal_places=2)
 
-    class Meta:
-        model = Order
-        fields = [
-            'sender_name', 'sender_phone',
-            'full_address', 'apartment', 'entrance', 'floor', 'intercom',
-            'date', 'time', 'district',
-            'recipent_name', 'recipent_phone', 'postcart',
-            'delivery_cost', 'items'
-        ]
-        extra_kwargs = {
-            'sender_name': {'required': True},
-            'sender_phone': {'required': True},
-            'full_address': {'required': True},
-            'date': {'required': True},
-            'time': {'required': True},
-            'district': {'required': True},
-        }
-
-    def validate_items(self, value):
+    def validate_cartItems(self, value):
         """Проверка что есть хотя бы один товар"""
         if not value:
             raise serializers.ValidationError("Заказ должен содержать хотя бы один товар")
