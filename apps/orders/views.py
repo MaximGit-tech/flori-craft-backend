@@ -106,6 +106,7 @@ class CreateOrderView(APIView):
                     apartment=delivery.get('apartment', ''),
                     entrance=delivery.get('entrance', ''),
                     floor=delivery.get('floor', ''),
+                    intercom=delivery.get('intercom', ''),
                     date=delivery['date'],
                     time=delivery['time'],
                     district=delivery['district'],
