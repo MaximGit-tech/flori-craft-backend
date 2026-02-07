@@ -161,9 +161,9 @@ class CreateOrderView(APIView):
                 }, status=status.HTTP_201_CREATED)
 
         except Exception as e:
-            logger.error(f"Ошибка при создании заказа: {str(e)}")
+            logger.error(f"Ошибка при создании заказа: {type(e).__name__}: {str(e)}", exc_info=True)
             return Response(
-                {'error': 'Не удалось создать заказ и инициализировать платеж'},
+                {'error': 'Не удалось создать заказ и инициализировать платеж', 'detail': str(e)},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 

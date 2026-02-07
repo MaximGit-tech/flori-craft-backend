@@ -1,4 +1,5 @@
 import uuid
+import logging
 from decimal import Decimal
 from typing import Optional, Dict, Any
 from ipaddress import ip_address, ip_network
@@ -10,12 +11,18 @@ from yookassa.domain.request import PaymentRequestBuilder
 from django.conf import settings
 
 
+logger = logging.getLogger(__name__)
+
+
 class YooKassaService:
     """Сервис для работы с платежами через ЮКассу"""
 
     def __init__(self):
         Configuration.account_id = settings.YOOKASSA_SHOP_ID
         Configuration.secret_key = settings.YOOKASSA_SECRET_KEY
+        # Определяем тестовый режим по типу секретного ключа
+        self.is_test_mode = settings.YOOKASSA_SECRET_KEY.startswith('test_') if settings.YOOKASSA_SECRET_KEY else False
+        logger.info(f"YooKassa инициализирована. Тестовый режим: {self.is_test_mode}")
 
     def create_payment(
         self,
@@ -40,50 +47,71 @@ class YooKassaService:
         Returns:
             Dict с информацией о платеже
         """
-        idempotence_key = str(uuid.uuid4())
+        try:
+            idempotence_key = str(uuid.uuid4())
 
-        payment_data = {
-            "amount": {
-                "value": str(amount),
-                "currency": "RUB"
-            },
-            "confirmation": {
-                "type": ConfirmationType.REDIRECT,
-                "return_url": return_url
-            },
-            "capture": True,
-            "description": description,
-            "metadata": {
-                "order_id": order_id
-            }
-        }
-
-        if user_email:
-            payment_data["receipt"] = {
-                "customer": {
-                    "email": user_email
+            payment_data = {
+                "amount": {
+                    "value": str(amount),
+                    "currency": "RUB"
                 },
-                "items": [
-                    {
-                        "description": description,
-                        "quantity": "1",
-                        "amount": {
-                            "value": str(amount),
-                            "currency": "RUB"
-                        },
-                        "vat_code": 1
-                    }
-                ]
+                "confirmation": {
+                    "type": ConfirmationType.REDIRECT,
+                    "return_url": return_url
+                },
+                "capture": True,
+                "description": description,
+                "metadata": {
+                    "order_id": order_id
+                }
             }
 
-        payment = Payment.create(payment_data, idempotence_key)
+            # Добавляем чек - обязателен если включена фискализация
+            # Нужен хотя бы email или phone
+            if user_email or user_phone:
+                customer_data = {}
+                if user_email:
+                    customer_data["email"] = user_email
+                if user_phone:
+                    customer_data["phone"] = user_phone
 
-        return {
-            'payment_id': payment.id,
-            'payment_url': payment.confirmation.confirmation_url,
-            'status': payment.status,
-            'paid': payment.paid
-        }
+                payment_data["receipt"] = {
+                    "customer": customer_data,
+                    "items": [
+                        {
+                            "description": description,
+                            "quantity": "1.00",
+                            "amount": {
+                                "value": str(amount),
+                                "currency": "RUB"
+                            },
+                            "vat_code": 1,
+                            "payment_mode": "full_payment",
+                            "payment_subject": "commodity"
+                        }
+                    ]
+                }
+                logger.info(f"Чек добавлен к платежу (email: {user_email}, phone: {user_phone})")
+            else:
+                logger.warning("Невозможно создать чек: не указан ни email, ни phone")
+
+            logger.info(f"Создание платежа. Order ID: {order_id}, Amount: {amount}, Email: {user_email}")
+            logger.debug(f"Payment data: {payment_data}")
+
+            payment = Payment.create(payment_data, idempotence_key)
+
+            logger.info(f"Платеж создан успешно. Payment ID: {payment.id}, Status: {payment.status}")
+
+            return {
+                'payment_id': payment.id,
+                'payment_url': payment.confirmation.confirmation_url,
+                'status': payment.status,
+                'paid': payment.paid
+            }
+        except Exception as e:
+            logger.error(f"Ошибка создания платежа в ЮКассе: {type(e).__name__}: {str(e)}")
+            logger.error(f"Order ID: {order_id}, Amount: {amount}")
+            raise
 
     def check_payment(self, payment_id: str) -> Dict[str, Any]:
         """

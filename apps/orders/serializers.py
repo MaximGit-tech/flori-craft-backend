@@ -6,7 +6,7 @@ class OrderItemSerializer(serializers.ModelSerializer):
     """Сериализатор для товара в заказе"""
     class Meta:
         model = OrderItem
-        fields = ['id', 'product_id', 'item_id', 'name', 'size', 'price', 'image_urls']
+        fields = ['id', 'product_id', 'name', 'size', 'price', 'image']
         read_only_fields = ['id']
 
 
