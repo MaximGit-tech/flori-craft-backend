@@ -13,7 +13,6 @@ class OrderItemSerializer(serializers.ModelSerializer):
 class CartItemSerializer(serializers.Serializer):
     """Сериализатор для элемента корзины"""
     productId = serializers.CharField(max_length=50)
-    id = serializers.CharField(max_length=50)
     size = serializers.ChoiceField(choices=['S', 'M', 'L'], required=False, allow_blank=True)
     price = serializers.DecimalField(max_digits=10, decimal_places=2)
     title = serializers.CharField(max_length=255)

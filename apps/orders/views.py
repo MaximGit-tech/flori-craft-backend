@@ -121,7 +121,6 @@ class CreateOrderView(APIView):
                     OrderItem(
                         order=order,
                         product_id=item['productId'],
-                        item_id=item['id'],
                         name=item['title'],
                         size=item['size'],
                         price=item['price'],
