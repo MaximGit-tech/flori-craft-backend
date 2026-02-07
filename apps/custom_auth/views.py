@@ -4,7 +4,7 @@ from rest_framework import status
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from .models import CustomUser
-from .services.sms_code import generate_sms, verify_sms
+from .services.sms_code import generate_sms, verify_sms, send_sms
 from django.core.signing import Signer, BadSignature
 
 class SendSmsView(APIView):
@@ -74,7 +74,12 @@ class SendSmsView(APIView):
             return Response({'error': 'phone required'}, status=400)
 
         code = generate_sms(phone)
-        # send_sms(phone, f'Ваш код: {code}')
+        success, message = send_sms(phone, f'Ваш код подтверждения FloriCraft: {code}')
+
+        if not success:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f'Failed to send SMS: {message}')
 
         return Response({'status': 'ok'})
 

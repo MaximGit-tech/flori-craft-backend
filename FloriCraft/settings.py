@@ -18,6 +18,7 @@ SECRET_KEY = os.getenv('SECRET_KEY')
 DEBUG = os.getenv('DEBUG', 'True') == 'True'
 ALLOWED_HOSTS = ['flori-craft-backend-production.up.railway.app', '.railway.app', '127.0.0.1', ".onrender.com"]
 
+# Posiflora settings
 POSIFLORA_URL = os.getenv('POSIFLORA_URL', 'https://floricraft.posiflora.com/api/v1')
 POSIFLORA_USER = os.getenv('POSIFLORA_USER')
 POSIFLORA_PASSWORD = os.getenv('POSIFLORA_PASSWORD')
@@ -25,6 +26,11 @@ POSIFLORA_PASSWORD = os.getenv('POSIFLORA_PASSWORD')
 # YooKassa settings
 YOOKASSA_SHOP_ID = os.getenv('YOOKASSA_SHOP_ID')
 YOOKASSA_SECRET_KEY = os.getenv('YOOKASSA_SECRET_KEY')
+
+# SMSC settings
+SMSC_LOGIN = os.getenv('SMSC_LOGIN')
+SMSC_PASSWORD = os.getenv('SMSC_PASSWORD')
+SMSC_DEBUG = os.getenv('SMSC_DEBUG', 'False') == 'True'
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -57,7 +63,7 @@ MIDDLEWARE = [
 
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
-    "https://flori-craft.vercel.app/"
+    "https://flori-craft-front.vercel.app"
 ]
 
 CORS_ALLOW_CREDENTIALS = True
