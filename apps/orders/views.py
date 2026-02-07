@@ -6,6 +6,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
 from django.db import transaction
 from django.utils import timezone
+from django.core.signing import Signer, BadSignature
 from decimal import Decimal
 import json
 import logging
@@ -19,26 +20,67 @@ from apps.orders.serializers import (
 )
 from apps.orders.services import YooKassaService
 from apps.cart.models import Cart
-from drf_spectacular.utils import extend_schema, OpenApiResponse
+from apps.custom_auth.models import CustomUser
+from drf_spectacular.utils import extend_schema, OpenApiResponse, OpenApiParameter
+from drf_spectacular.types import OpenApiTypes
 
 
 logger = logging.getLogger(__name__)
 
 
+def unsign_user_id(signed_user_id):
+    """Расшифровывает подписанный user_id из cookie."""
+    if not signed_user_id:
+        return None
+    try:
+        signer = Signer(salt='user-auth')
+        return signer.unsign(signed_user_id)
+    except BadSignature:
+        return None
+
+
 class CreateOrderView(APIView):
     """Создание заказа с инициализацией платежа"""
-    permission_classes = [IsAuthenticated]
+    authentication_classes = []
+    permission_classes = []
 
     @extend_schema(
         request=OrderCreateSerializer,
+        parameters=[
+            OpenApiParameter(
+                name='user_id',
+                type=OpenApiTypes.STR,
+                location=OpenApiParameter.QUERY,
+                description='ID пользователя (подписанный)',
+                required=True
+            )
+        ],
         responses={
             201: PaymentResponseSerializer,
             400: OpenApiResponse(description="Ошибка валидации"),
+            404: OpenApiResponse(description="Пользователь не найден"),
             500: OpenApiResponse(description="Ошибка создания платежа")
         },
         tags=['Orders']
     )
     def post(self, request):
+        signed_user_id = request.GET.get('user_id')
+        user_id = unsign_user_id(signed_user_id)
+
+        if not user_id:
+            return Response(
+                {'error': 'user_id required or invalid signature'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            user = CustomUser.objects.get(id=user_id)
+        except CustomUser.DoesNotExist:
+            return Response(
+                {'error': 'User not found'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
         serializer = OrderCreateSerializer(data=request.data)
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -57,7 +99,7 @@ class CreateOrderView(APIView):
                 full_price = validated_data['fullPrice']
 
                 order = Order.objects.create(
-                    user=request.user,
+                    user=user,
                     sender_name=sender['name'],
                     sender_phone=sender['phoneNumber'],
                     full_address=delivery['fullAddress'],
@@ -89,7 +131,7 @@ class CreateOrderView(APIView):
                 OrderItem.objects.bulk_create(order_items)
 
                 try:
-                    cart = Cart.objects.get(user=request.user)
+                    cart = Cart.objects.get(user=user)
                     cart.items.all().delete()
                 except Cart.DoesNotExist:
                     pass
@@ -103,7 +145,7 @@ class CreateOrderView(APIView):
                     order_id=order.id,
                     description=f"Оплата заказа №{order.id}",
                     return_url=return_url,
-                    user_email=getattr(request.user, 'email', None),
+                    user_email=getattr(user, 'email', None),
                     user_phone=sender['phoneNumber']
                 )
 
@@ -128,19 +170,47 @@ class CreateOrderView(APIView):
 
 class CheckPaymentView(APIView):
     """Проверка статуса платежа"""
-    permission_classes = [IsAuthenticated]
+    authentication_classes = []
+    permission_classes = []
 
     @extend_schema(
+        parameters=[
+            OpenApiParameter(
+                name='user_id',
+                type=OpenApiTypes.STR,
+                location=OpenApiParameter.QUERY,
+                description='ID пользователя (подписанный)',
+                required=True
+            )
+        ],
         responses={
             200: PaymentStatusSerializer,
+            400: OpenApiResponse(description="Неверный user_id"),
             404: OpenApiResponse(description="Заказ не найден"),
             500: OpenApiResponse(description="Ошибка проверки платежа")
         },
         tags=['Orders']
     )
     def get(self, request, order_id):
+        signed_user_id = request.GET.get('user_id')
+        user_id = unsign_user_id(signed_user_id)
+
+        if not user_id:
+            return Response(
+                {'error': 'user_id required or invalid signature'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
         try:
-            order = Order.objects.get(id=order_id, user=request.user)
+            user = CustomUser.objects.get(id=user_id)
+        except CustomUser.DoesNotExist:
+            return Response(
+                {'error': 'User not found'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        try:
+            order = Order.objects.get(id=order_id, user=user)
 
             if not order.payment_id:
                 return Response(
@@ -242,20 +312,48 @@ class YooKassaWebhookView(APIView):
 
 class OrderDetailView(APIView):
     """Получение деталей заказа"""
-    permission_classes = [IsAuthenticated]
+    authentication_classes = []
+    permission_classes = []
 
     @extend_schema(
+        parameters=[
+            OpenApiParameter(
+                name='user_id',
+                type=OpenApiTypes.STR,
+                location=OpenApiParameter.QUERY,
+                description='ID пользователя (подписанный)',
+                required=True
+            )
+        ],
         responses={
             200: OrderDetailSerializer,
+            400: OpenApiResponse(description="Неверный user_id"),
             404: OpenApiResponse(description="Заказ не найден")
         },
         tags=['Orders']
     )
     def get(self, request, order_id):
+        signed_user_id = request.GET.get('user_id')
+        user_id = unsign_user_id(signed_user_id)
+
+        if not user_id:
+            return Response(
+                {'error': 'user_id required or invalid signature'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            user = CustomUser.objects.get(id=user_id)
+        except CustomUser.DoesNotExist:
+            return Response(
+                {'error': 'User not found'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
         try:
             order = Order.objects.prefetch_related('items').get(
                 id=order_id,
-                user=request.user
+                user=user
             )
             serializer = OrderDetailSerializer(order)
             return Response(serializer.data, status=status.HTTP_200_OK)
