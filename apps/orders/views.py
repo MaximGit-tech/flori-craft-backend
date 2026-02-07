@@ -125,7 +125,7 @@ class CreateOrderView(APIView):
                         name=item['title'],
                         size=item['size'],
                         price=item['price'],
-                        image_urls=item['image_urls']
+                        image=item['image']
                     )
                     for item in cart_items
                 ]

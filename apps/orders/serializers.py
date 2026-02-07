@@ -17,10 +17,7 @@ class CartItemSerializer(serializers.Serializer):
     size = serializers.ChoiceField(choices=['S', 'M', 'L'], required=False, allow_blank=True)
     price = serializers.DecimalField(max_digits=10, decimal_places=2)
     title = serializers.CharField(max_length=255)
-    image_urls = serializers.ListField(
-        child=serializers.URLField(),
-        allow_empty=True
-    )
+    image = serializers.URLField(max_length=255)
 
 
 class DeliverySerializer(serializers.Serializer):
