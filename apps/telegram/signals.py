@@ -4,7 +4,7 @@ Signals для автоматической отправки уведомлен�
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 from apps.orders.models import Order
-from apps.telegram.telegram_notifier import TelegramBotNotifier
+from apps.orders.telegram_service import TelegramNotificationService
 import logging
 
 logger = logging.getLogger(__name__)
@@ -19,8 +19,8 @@ def send_order_notification(sender, instance, created, **kwargs):
     if instance.status == 'paid':
         if created or (not created and instance.paid_at):
             try:
-                notifier = TelegramBotNotifier()
-                success = notifier.send_order_notification(instance)
+                service = TelegramNotificationService()
+                success = service.send_new_order_notification(instance)
                 
                 if success:
                     logger.info(f"✅ Уведомление о заказе #{instance.id} отправлено в Telegram")
