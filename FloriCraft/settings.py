@@ -34,7 +34,6 @@ SMSC_DEBUG = os.getenv('SMSC_DEBUG', 'False') == 'True'
 
 # Telegram Bot settings
 TELEGRAM_BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN')
-TELEGRAM_CHAT_ID = os.getenv('TELEGRAM_CHAT_ID')
 
 INSTALLED_APPS = [
     'django.contrib.admin',

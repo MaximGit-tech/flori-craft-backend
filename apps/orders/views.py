@@ -11,7 +11,7 @@ from decimal import Decimal
 import json
 import logging
 
-from apps.orders.models import Order, OrderItem
+from apps.orders.models import Order, OrderItem, TelegramAdmin
 from apps.orders.serializers import (
     OrderCreateSerializer,
     OrderDetailSerializer,
@@ -369,3 +369,59 @@ class OrderDetailView(APIView):
                 {'error': 'Заказ не найден'},
                 status=status.HTTP_404_NOT_FOUND
             )
+
+
+@method_decorator(csrf_exempt, name='dispatch')
+class TelegramAdminRegisterView(APIView):
+    """Регистрация администратора из Telegram бота"""
+    permission_classes = []
+    authentication_classes = []
+
+    @extend_schema(
+        exclude=True
+    )
+    def post(self, request):
+        """
+        Регистрирует или обновляет администратора из Telegram бота
+
+        Ожидаемые данные:
+        {
+            "chat_id": 123456789,
+            "username": "username",
+            "first_name": "John",
+            "last_name": "Doe"
+        }
+        """
+        try:
+            data = json.loads(request.body)
+
+            chat_id = data.get('chat_id')
+            if not chat_id:
+                return Response({'error': 'chat_id is required'}, status=status.HTTP_400_BAD_REQUEST)
+
+            # Создаем или обновляем администратора
+            admin, created = TelegramAdmin.objects.update_or_create(
+                chat_id=chat_id,
+                defaults={
+                    'username': data.get('username'),
+                    'first_name': data.get('first_name'),
+                    'last_name': data.get('last_name'),
+                    'is_active': True
+                }
+            )
+
+            action = 'registered' if created else 'updated'
+            logger.info(f"Telegram администратор {chat_id} {action}")
+
+            return Response({
+                'status': 'ok',
+                'action': action,
+                'chat_id': chat_id
+            }, status=status.HTTP_200_OK)
+
+        except json.JSONDecodeError:
+            logger.error("Ошибка парсинга JSON при регистрации администратора")
+            return Response({'error': 'Invalid JSON'}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            logger.error(f"Ошибка регистрации администратора: {str(e)}")
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

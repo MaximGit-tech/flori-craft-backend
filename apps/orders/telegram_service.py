@@ -1,7 +1,7 @@
 import requests
 import logging
 from django.conf import settings
-from apps.orders.models import Order
+from apps.orders.models import Order, TelegramAdmin
 
 logger = logging.getLogger(__name__)
 
@@ -11,44 +11,65 @@ class TelegramNotificationService:
 
     def __init__(self):
         self.bot_token = settings.TELEGRAM_BOT_TOKEN
-        self.chat_id = settings.TELEGRAM_CHAT_ID
         self.base_url = f"https://api.telegram.org/bot{self.bot_token}"
 
     def send_new_order_notification(self, order: Order) -> bool:
         """
-        Отправляет уведомление о новом оплаченном заказе в Telegram
+        Отправляет уведомление о новом оплаченном заказе всем активным администраторам
 
         Args:
             order: Объект заказа Order
 
         Returns:
-            bool: True если уведомление отправлено успешно, False в противном случае
+            bool: True если уведомление отправлено хотя бы одному администратору, False в противном случае
         """
-        if not self.bot_token or not self.chat_id:
-            logger.warning("Telegram бот не настроен (отсутствует токен или chat_id)")
+        if not self.bot_token:
+            logger.warning("Telegram бот не настроен (отсутствует токен)")
             return False
 
         try:
+            # Получаем всех активных администраторов
+            admins = TelegramAdmin.objects.filter(is_active=True)
+
+            if not admins.exists():
+                logger.warning("Нет активных администраторов для отправки уведомлений")
+                return False
+
+            # Формируем текст уведомления
             message = self._format_order_message(order)
 
+            # Отправляем сообщение каждому администратору
+            success_count = 0
             url = f"{self.base_url}/sendMessage"
-            payload = {
-                "chat_id": self.chat_id,
-                "text": message,
-                "parse_mode": "HTML"
-            }
 
-            response = requests.post(url, json=payload, timeout=10)
+            for admin in admins:
+                try:
+                    payload = {
+                        "chat_id": admin.chat_id,
+                        "text": message,
+                        "parse_mode": "HTML"
+                    }
 
-            if response.status_code == 200:
-                logger.info(f"Уведомление о заказе #{order.id} успешно отправлено в Telegram")
+                    response = requests.post(url, json=payload, timeout=10)
+
+                    if response.status_code == 200:
+                        success_count += 1
+                        logger.info(f"Уведомление о заказе #{order.id} отправлено администратору {admin.chat_id}")
+                    else:
+                        logger.error(f"Ошибка отправки администратору {admin.chat_id}: {response.status_code}, {response.text}")
+
+                except Exception as e:
+                    logger.error(f"Ошибка при отправке администратору {admin.chat_id}: {str(e)}")
+
+            if success_count > 0:
+                logger.info(f"Уведомление о заказе #{order.id} отправлено {success_count}/{admins.count()} администраторам")
                 return True
             else:
-                logger.error(f"Ошибка отправки в Telegram: {response.status_code}, {response.text}")
+                logger.error(f"Не удалось отправить уведомление ни одному администратору")
                 return False
 
         except Exception as e:
-            logger.error(f"Ошибка при отправке уведомления в Telegram: {str(e)}")
+            logger.error(f"Ошибка при отправке уведомлений в Telegram: {str(e)}")
             return False
 
     def _format_order_message(self, order: Order) -> str:

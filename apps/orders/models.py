@@ -2,6 +2,25 @@ from django.db import models
 from apps.custom_auth.models import CustomUser
 
 
+class TelegramAdmin(models.Model):
+    """Модель для хранения Telegram chat_id администраторов"""
+
+    chat_id = models.BigIntegerField(unique=True, verbose_name="Chat ID")
+    username = models.CharField(max_length=255, null=True, blank=True, verbose_name="Username")
+    first_name = models.CharField(max_length=255, null=True, blank=True, verbose_name="Имя")
+    last_name = models.CharField(max_length=255, null=True, blank=True, verbose_name="Фамилия")
+    is_active = models.BooleanField(default=True, verbose_name="Активен")
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Дата добавления")
+
+    class Meta:
+        verbose_name = "Telegram администратор"
+        verbose_name_plural = "Telegram администраторы"
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.username or self.chat_id} ({'активен' if self.is_active else 'неактивен'})"
+
+
 class Order(models.Model):
     STATUS_CHOICES = [
         ('pending', 'Ожидает оплаты'),
