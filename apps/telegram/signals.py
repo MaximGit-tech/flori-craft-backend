@@ -1,11 +1,10 @@
 """
 Signals для автоматической отправки уведомлений о заказах
-Создайте файл apps/orders/signals.py
 """
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 from apps.orders.models import Order
-from .telegram_service import TelegramNotificationService
+from apps.orders.telegram_service import TelegramNotificationService
 import logging
 
 logger = logging.getLogger(__name__)

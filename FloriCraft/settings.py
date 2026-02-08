@@ -122,7 +122,7 @@ DATABASES = {
 }
 
 TELEGRAM_BOT_API_URL = os.environ.get('TELEGRAM_BOT_API_URL', 'http://localhost:8000')
-TELEGRAM_BOT_API_KEY = os.environ.get('TELEGRAM_BOT_API_KEY', '')  # Если используете
+TELEGRAM_BOT_API_KEY = os.environ.get('TELEGRAM_BOT_API_KEY', '')
 
 LOGGING = {
     'version': 1,

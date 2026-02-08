@@ -8,4 +8,4 @@ class TelegramConfig(AppConfig):
         """
         Импортируем signals при запуске приложения
         """
-        import signals
+        from apps.telegram import signals
