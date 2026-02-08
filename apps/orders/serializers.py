@@ -25,7 +25,7 @@ class DeliverySerializer(serializers.Serializer):
     apartment = serializers.CharField(required=False, allow_blank=True)
     entrance = serializers.CharField(required=False, allow_blank=True)
     floor = serializers.CharField(required=False, allow_blank=True)
-    intercom = serializers.CharField()
+    intercom = serializers.CharField(required=False, allow_blank=True)
     date = serializers.CharField()
     time = serializers.CharField()
     district = serializers.CharField()
