@@ -28,17 +28,14 @@ class TelegramNotificationService:
             return False
 
         try:
-            # Получаем всех активных администраторов
             admins = TelegramAdmin.objects.filter(is_active=True)
 
             if not admins.exists():
                 logger.warning("Нет активных администраторов для отправки уведомлений")
                 return False
 
-            # Формируем текст уведомления
             message = self._format_order_message(order)
 
-            # Отправляем сообщение каждому администратору
             success_count = 0
             url = f"{self.base_url}/sendMessage"
 

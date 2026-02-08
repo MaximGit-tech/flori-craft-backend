@@ -4,7 +4,9 @@ from apps.orders.views import (
     CheckPaymentView,
     YooKassaWebhookView,
     OrderDetailView,
-    TelegramAdminRegisterView
+    TelegramAdminRegisterView,
+    TelegramAdminCheckView,
+    TelegramOrdersListView
 )
 
 urlpatterns = [
@@ -13,4 +15,6 @@ urlpatterns = [
     path('<int:order_id>/check-payment/', CheckPaymentView.as_view(), name='check-payment'),
     path('webhook/', YooKassaWebhookView.as_view(), name='yookassa-webhook'),
     path('telegram/register/', TelegramAdminRegisterView.as_view(), name='telegram-admin-register'),
+    path('telegram/check/<int:chat_id>/', TelegramAdminCheckView.as_view(), name='telegram-admin-check'),
+    path('telegram/orders/<int:chat_id>/', TelegramOrdersListView.as_view(), name='telegram-orders-list'),
 ]

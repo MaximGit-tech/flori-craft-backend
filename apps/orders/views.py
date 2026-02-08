@@ -399,7 +399,6 @@ class TelegramAdminRegisterView(APIView):
             if not chat_id:
                 return Response({'error': 'chat_id is required'}, status=status.HTTP_400_BAD_REQUEST)
 
-            # Создаем или обновляем администратора
             admin, created = TelegramAdmin.objects.update_or_create(
                 chat_id=chat_id,
                 defaults={
@@ -425,3 +424,84 @@ class TelegramAdminRegisterView(APIView):
         except Exception as e:
             logger.error(f"Ошибка регистрации администратора: {str(e)}")
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class TelegramAdminCheckView(APIView):
+    """Проверка статуса администратора"""
+    authentication_classes = []
+    permission_classes = []
+
+    @extend_schema(
+        exclude=True
+    )
+    def get(self, request, chat_id):
+        """Проверить статус регистрации администратора"""
+        try:
+            admin = TelegramAdmin.objects.get(chat_id=chat_id)
+            return Response({
+                'is_registered': True,
+                'is_active': admin.is_active,
+                'username': admin.username,
+                'first_name': admin.first_name,
+                'last_name': admin.last_name
+            }, status=status.HTTP_200_OK)
+        except TelegramAdmin.DoesNotExist:
+            return Response({
+                'is_registered': False,
+                'is_active': False
+            }, status=status.HTTP_200_OK)
+
+
+class TelegramOrdersListView(APIView):
+    """API для получения списка заказов для Telegram бота"""
+    authentication_classes = []
+    permission_classes = []
+
+    @extend_schema(
+        exclude=True
+    )
+    def get(self, request, chat_id):
+        """Получить последние заказы для авторизованного администратора"""
+        try:
+            admin = TelegramAdmin.objects.get(chat_id=chat_id, is_active=True)
+        except TelegramAdmin.DoesNotExist:
+            return Response(
+                {'error': 'Администратор не найден или неактивен'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        orders = Order.objects.filter(status='paid').prefetch_related('items').order_by('-created_at')[:10]
+        
+        orders_data = []
+        for order in orders:
+            items_data = []
+            for item in order.items.all():
+                items_data.append({
+                    'name': item.name,
+                    'size': item.get_size_display() if item.size else None,
+                    'price': str(item.price)
+                })
+            
+            time_display = dict(Order.DELIVERY_TIME_CHOICES).get(order.time, order.time)
+            district_display = dict(Order.DELIVERY_DISTRICT_CHOICES).get(order.district, order.district)
+            
+            orders_data.append({
+                'id': order.id,
+                'sender_name': order.sender_name,
+                'sender_phone': order.sender_phone,
+                'recipent_name': order.recipent_name,
+                'recipent_phone': order.recipent_phone,
+                'full_address': order.full_address,
+                'date': order.date,
+                'time': time_display,
+                'district': district_display,
+                'total_amount': str(order.total_amount),
+                'created_at': order.created_at.isoformat(),
+                'paid_at': order.paid_at.isoformat() if order.paid_at else None,
+                'items': items_data
+            })
+        
+        return Response({
+            'orders': orders_data,
+            'count': len(orders_data)
+        }, status=status.HTTP_200_OK)
