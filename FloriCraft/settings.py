@@ -49,6 +49,7 @@ INSTALLED_APPS = [
     'apps.cart.apps.CartConfig',
     'apps.orders.apps.OrdersConfig',
     'apps.posiflora.apps.PosifloraConfig',
+    'apps.telegram.apps.TelegramConfig',
     'corsheaders',
     'drf_spectacular',
 ]
@@ -120,6 +121,32 @@ DATABASES = {
     )
 }
 
+TELEGRAM_BOT_API_URL = os.environ.get('TELEGRAM_BOT_API_URL', 'http://localhost:8000')
+TELEGRAM_BOT_API_KEY = os.environ.get('TELEGRAM_BOT_API_KEY', '')  # Если используете
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '{levelname} {asctime} {module} {message}',
+            'style': '{',
+        },
+    },
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'verbose',
+        },
+    },
+    'loggers': {
+        'apps.orders': {
+            'handlers': ['console'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+    },
+}
 
 SPECTACULAR_SETTINGS = {
     'TITLE': 'FloriCraft API',
