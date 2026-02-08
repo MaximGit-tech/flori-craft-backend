@@ -49,4 +49,4 @@ class TelegramAdminAdmin(admin.ModelAdmin):
 
     def has_add_permission(self, request):
         # Запрещаем добавление через админку, администраторы добавляются только через бота
-        return False
+        return True
