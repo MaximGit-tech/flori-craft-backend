@@ -69,19 +69,10 @@ class CreateOrderView(APIView):
         signed_user_id = request.GET.get('user_id')
         user_id = unsign_user_id(signed_user_id)
 
-        if not user_id:
-            return Response(
-                {'error': 'user_id required or invalid signature'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
         try:
             user = CustomUser.objects.get(id=user_id)
         except CustomUser.DoesNotExist:
-            return Response(
-                {'error': 'User not found'},
-                status=status.HTTP_404_NOT_FOUND
-            )
+            user = None
 
         serializer = OrderCreateSerializer(data=request.data)
         if not serializer.is_valid():
