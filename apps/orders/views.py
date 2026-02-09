@@ -24,6 +24,7 @@ from apps.cart.models import Cart
 from apps.custom_auth.models import CustomUser
 from drf_spectacular.utils import extend_schema, OpenApiResponse, OpenApiParameter
 from drf_spectacular.types import OpenApiTypes
+from apps.custom_auth.services.sms_code import send_sms
 
 
 logger = logging.getLogger(__name__)
@@ -302,6 +303,17 @@ class YooKassaWebhookView(APIView):
                         telegram_service.send_new_order_notification(order)
                     except Exception as e:
                         logger.error(f"Не удалось отправить уведомление в Telegram: {str(e)}")
+
+                    try:
+                        message = f'Оформлен заказ номер {order.id} на сумму {order.total_amount}. Ожидаемое время доставки {order.date} {order.time} по адресу {order.full_address}'
+                        success, message = send_sms(order.sender_phone, message)
+
+                        if not success:
+                            logger = logging.getLogger(__name__)
+                            logger.error(f'Failed to send SMS: {message}')
+
+                    except Exception as e:
+                        logger.error(f"Не удалось отправить уведомление: {str(e)}")
 
                 return Response({'status': 'ok'}, status=status.HTTP_200_OK)
 
