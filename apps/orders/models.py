@@ -41,10 +41,10 @@ class Order(models.Model):
     ]
 
     DELIVERY_DISTRICT_CHOICES = [
-        ('JK', 'FiliGrad, Only, Beregovoy'),
-        ('FILI', 'Fili'),
-        ('MKAD', 'MKAD'),
-        ('NMKAD', 'Outside MKAD'),
+        ('JK', 'ЖК Филиград, Онли, Береговой'),
+        ('FILI', 'Район Фили'),
+        ('MKAD', 'МКАД'),
+        ('NMKAD', 'За Мкадом'),
     ]
 
     user = models.ForeignKey(
