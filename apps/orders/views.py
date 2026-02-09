@@ -305,15 +305,19 @@ class YooKassaWebhookView(APIView):
                         logger.error(f"Не удалось отправить уведомление в Telegram: {str(e)}")
 
                     try:
-                        message = f'Оформлен заказ номер {order.id} на сумму {order.total_amount}. Ожидаемое время доставки {order.date} {order.time} по адресу {order.full_address}'
-                        success, message = send_sms(order.sender_phone, message)
-
-                        if not success:
-                            logger = logging.getLogger(__name__)
-                            logger.error(f'Failed to send SMS: {message}')
+                        message = (f'Заказ №{order.id} оплачен! '
+                                f'Сумма: {order.total_amount} руб. '
+                                f'Доставка: {order.date} {order.time}')
+                        
+                        success, response_message = send_sms(order.sender_phone, message)
+                        
+                        if success:
+                            logger.info(f'SMS успешно отправлено на {order.sender_phone} для заказа {order.id}')
+                        else:
+                            logger.error(f'Ошибка отправки SMS для заказа {order.id}: {response_message}')
 
                     except Exception as e:
-                        logger.error(f"Не удалось отправить уведомление: {str(e)}")
+                        logger.error(f"Исключение при отправке SMS для заказа {order.id}: {str(e)}")
 
                 return Response({'status': 'ok'}, status=status.HTTP_200_OK)
 
