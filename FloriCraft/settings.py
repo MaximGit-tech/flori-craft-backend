@@ -16,7 +16,7 @@ load_dotenv(BASE_DIR / '.env')
 
 SECRET_KEY = os.getenv('SECRET_KEY')
 DEBUG = os.getenv('DEBUG', 'True') == 'True'
-ALLOWED_HOSTS = ['flori-craft-backend-production.up.railway.app', '.railway.app', '127.0.0.1', ".onrender.com"]
+ALLOWED_HOSTS = ['api.floricraft.ru', 'localhost', 'backend', '127.0.0.1']
 
 # Posiflora settings
 POSIFLORA_URL = os.getenv('POSIFLORA_URL', 'https://floricraft.posiflora.com/api/v1')
@@ -66,8 +66,9 @@ MIDDLEWARE = [
 ]
 
 CORS_ALLOWED_ORIGINS = [
-    "http://localhost:3000",
-    "https://flori-craft.vercel.app"
+    'https://floricraft.ru',
+    'https://www.floricraft.ru',
+    'https://admin.floricraft.ru',
 ]
 
 CORS_ALLOW_CREDENTIALS = True
@@ -117,7 +118,7 @@ DATABASES = {
     'default': dj_database_url.parse(
         os.environ.get('DATABASE_URL'),
         conn_max_age=600,
-        ssl_require=True
+        ssl_require=False
     )
 }
 
