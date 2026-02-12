@@ -131,7 +131,7 @@ class CreateOrderView(APIView):
 
                 yookassa_service = YooKassaService()
 
-                return_url = request.data.get('return_url', 'https://flori-craft.vercel.app/')
+                return_url = request.data.get('return_url', 'https://floricraft.ru/')
 
                 payment_result = yookassa_service.create_payment(
                     amount=full_price,
