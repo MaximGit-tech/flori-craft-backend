@@ -148,7 +148,7 @@ class PosifloraProductService:
             url,
             headers=self._get_headers(),
             params=params,
-            timeout=10
+            timeout=30
         )
         payload = response.json()
 
@@ -260,7 +260,7 @@ class PosifloraProductService:
             url,
             headers=self._get_headers(),
             params=params,
-            timeout=10
+            timeout=30
         )
         payload = response.json()
 
@@ -567,7 +567,7 @@ class PosifloraProductService:
                 url,
                 headers=self._get_headers(),
                 params=params,
-                timeout=10
+                timeout=30
             )
             payload = response.json()
             logger.info(f"[GET SPEC BY ID] Received payload keys: {list(payload.keys())}")

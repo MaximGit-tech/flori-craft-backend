@@ -16,7 +16,7 @@ load_dotenv(BASE_DIR / '.env')
 
 SECRET_KEY = os.getenv('SECRET_KEY')
 DEBUG = os.getenv('DEBUG', 'True') == 'True'
-ALLOWED_HOSTS = ['api.floricraft.ru', 'localhost', 'backend', '127.0.0.1']
+ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'localhost').split(',')
 
 # Posiflora settings
 POSIFLORA_URL = os.getenv('POSIFLORA_URL', 'https://floricraft.posiflora.com/api/v1')
@@ -65,10 +65,12 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
+
 CORS_ALLOWED_ORIGINS = [
-    'https://floricraft.ru',
-    'https://www.floricraft.ru',
-    'https://admin.floricraft.ru',
+    "https://floricraft.ru",
+    "https://www.floricraft.ru",
+    "https://admin.floricraft.ru",
+    "http://localhost:3000"
 ]
 
 CORS_ALLOW_CREDENTIALS = True
