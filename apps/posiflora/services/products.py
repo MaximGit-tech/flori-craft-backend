@@ -138,8 +138,8 @@ class PosifloraProductService:
         params = {
             "page[number]": 1,
             "page[size]": 100,
-            #  "sort": "-price",
-            "urlPath": "floricraft",
+            # "sort": "-price",
+            # "urlPath": "floricraft",
             "include": "images"
         }
 
