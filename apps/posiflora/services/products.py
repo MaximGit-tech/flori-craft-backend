@@ -17,7 +17,7 @@ class PosifloraProductService:
     """Сервис для работы с товарами через Posiflora API (без пагинации)"""
 
     BASE_PATH = "/bouquets?page%5Bnumber%5D=1&page%5Bsize%5D=12&sort=-price&urlPath=floricraft"
-    SHOP_API_BASE = "/shop/api/v1"
+    SHOP_API_BASE = "/api/v1"
 
     @staticmethod
     def _get_headers() -> Dict[str, str]:
@@ -138,7 +138,7 @@ class PosifloraProductService:
         params = {
             "page[number]": 1,
             "page[size]": 100,
-            "sort": "-price",
+            #  "sort": "-price",
             "urlPath": "floricraft",
             "include": "images"
         }

@@ -66,7 +66,6 @@ class ProductDetailView(APIView):
                 status=status.HTTP_404_NOT_FOUND
             )
 
-
 class BouquetListView(APIView):
     """
     API endpoint для получения всех букетов
