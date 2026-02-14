@@ -140,7 +140,8 @@ class PosifloraProductService:
             "page[size]": 100,
             # "sort": "-price",
             # "urlPath": "floricraft",
-            "include": "images"
+            "include": "images",
+            "filter[status]": "on"
         }
 
         response = make_request_with_retry(
