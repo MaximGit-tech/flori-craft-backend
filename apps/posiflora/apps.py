@@ -21,7 +21,6 @@ class PosifloraConfig(AppConfig):
         from .services.tokens import get_session
 
         try:
-            # Проверяем учетные данные
             username = getattr(settings, 'POSIFLORA_USER', None)
             password = getattr(settings, 'POSIFLORA_PASSWORD', None)
 

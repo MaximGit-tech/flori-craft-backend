@@ -138,14 +138,8 @@ class PosifloraProductService:
         params = {
             "page[number]": 1,
             "page[size]": 100,
-<<<<<<< HEAD
-            # "sort": "-price",
-            # "urlPath": "floricraft",
-            "include": "images",
-=======
             "filter[statuses]": "demonstrated,edited",
-            "include": "images"
->>>>>>> 5a1d2469c316379b16f6091a96e24926e6566ac2
+            "include": "images",
         }
 
         response = make_request_with_retry(
@@ -218,41 +212,11 @@ class PosifloraProductService:
                 "price": price
             })
 
+        result = sorted(result, key=lambda b: b.get("price") or 0, reverse=True)
         return result
 
 
 
-    def fetch_specifications(self) -> Dict:
-        """
-        Получить спецификации (букеты) с вариантами размеров из нового API
-
-        Returns:
-            Словарь в формате:
-            {
-                "categories": [
-                    {
-                        "name": "Авторские букеты",
-                        "products": [
-                            {
-                                "title": "Букет Максим",
-                                "description": "",
-                                "image_urls": ["url1", "url2"],
-                                "variants": [
-                                    {"size": "S", "price": 4050},
-                                    {"size": "M", "price": 3150}
-                                ]
-                            },
-                            {
-                                "title": "Ваза",
-                                "description": "",
-                                "image_urls": ["url1"],
-                                "price": 4500
-                            }
-                        ]
-                    }
-                ]
-            }
-        """
     def fetch_specifications(self) -> Dict:
         """
         Получить спецификации (букеты) с вариантами размеров из нового API
@@ -292,20 +256,9 @@ class PosifloraProductService:
             "page[size]": 100,
         }
 
-<<<<<<< HEAD
-        response = make_request_with_retry(
-            'GET',
-            url,
-            headers=self._get_headers(),
-            params=params,
-            timeout=30
-        )
-        payload = response.json()
-=======
         specifications_data = []
         included = []
         page_number = 1
->>>>>>> 5a1d2469c316379b16f6091a96e24926e6566ac2
 
         while True:
             params = {**base_params, "page[number]": page_number}
@@ -326,7 +279,6 @@ class PosifloraProductService:
 
             logger.info(f"[FETCH SPECS] Page {page_number}: got {len(page_data)} items")
 
-            # Проверяем, есть ли следующая страница
             meta = payload.get("meta", {})
             total = meta.get("total") or meta.get("count")
             if total is not None:
@@ -455,10 +407,15 @@ class PosifloraProductService:
 
             categories_dict[category_name].append(product_dict)
 
+        def get_product_price(product):
+            if "variants" in product:
+                return max(v["price"] for v in product["variants"])
+            return product.get("price") or 0
+
         result_categories = [
             {
                 "name": category_name,
-                "products": products
+                "products": sorted(products, key=get_product_price, reverse=True)
             }
             for category_name, products in categories_dict.items()
         ]
