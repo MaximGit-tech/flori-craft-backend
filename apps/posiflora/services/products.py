@@ -17,7 +17,7 @@ class PosifloraProductService:
     """Сервис для работы с товарами через Posiflora API (без пагинации)"""
 
     BASE_PATH = "/bouquets?page%5Bnumber%5D=1&page%5Bsize%5D=12&sort=-price&urlPath=floricraft"
-    SHOP_API_BASE = "/shop/api/v1"
+    SHOP_API_BASE = "/api/v1"
 
     @staticmethod
     def _get_headers() -> Dict[str, str]:
@@ -134,12 +134,11 @@ class PosifloraProductService:
                 }
             ]
         """
-        url = self._build_shop_url("/bouquets")
+        url = "https://floricraft.posiflora.com/api/v1/bouquets"
         params = {
             "page[number]": 1,
             "page[size]": 100,
-            "sort": "-price",
-            "urlPath": "floricraft",
+            "filter[statuses]": "demonstrated,edited",
             "include": "images"
         }
 
@@ -248,24 +247,78 @@ class PosifloraProductService:
                 ]
             }
         """
+    def fetch_specifications(self) -> Dict:
+        """
+        Получить спецификации (букеты) с вариантами размеров из нового API
+
+        Returns:
+            Словарь в формате:
+            {
+                "categories": [
+                    {
+                        "name": "Авторские букеты",
+                        "products": [
+                            {
+                                "title": "Букет Максим",
+                                "description": "",
+                                "image_urls": ["url1", "url2"],
+                                "variants": [
+                                    {"size": "S", "price": 4050},
+                                    {"size": "M", "price": 3150}
+                                ]
+                            },
+                            {
+                                "title": "Ваза",
+                                "description": "",
+                                "image_urls": ["url1"],
+                                "price": 4500
+                            }
+                        ]
+                    }
+                ]
+            }
+        """
         url = self._build_url("/specifications")
-        params = {
+        base_params = {
             "include": "category,specVariants.variant,specVariants.variant.tags,specVariants.specVariantPrices,images",
             "filter[activeVariants]": "true",
-            "filter[status]": "on"
+            "filter[status]": "on",
+            "page[size]": 100,
         }
 
-        response = make_request_with_retry(
-            'GET',
-            url,
-            headers=self._get_headers(),
-            params=params,
-            timeout=10
-        )
-        payload = response.json()
+        specifications_data = []
+        included = []
+        page_number = 1
 
-        specifications_data = payload.get("data", [])
-        included = payload.get("included", [])
+        while True:
+            params = {**base_params, "page[number]": page_number}
+            response = make_request_with_retry(
+                'GET',
+                url,
+                headers=self._get_headers(),
+                params=params,
+                timeout=30
+            )
+            payload = response.json()
+
+            page_data = payload.get("data", [])
+            page_included = payload.get("included", [])
+
+            specifications_data.extend(page_data)
+            included.extend(page_included)
+
+            logger.info(f"[FETCH SPECS] Page {page_number}: got {len(page_data)} items")
+
+            # Проверяем, есть ли следующая страница
+            meta = payload.get("meta", {})
+            total = meta.get("total") or meta.get("count")
+            if total is not None:
+                if len(specifications_data) >= int(total):
+                    break
+            elif len(page_data) < base_params["page[size]"]:
+                break
+
+            page_number += 1
 
         logger.info(f"[FETCH SPECS] Total specifications: {len(specifications_data)}")
         logger.info(f"[FETCH SPECS] Total included items: {len(included)}")
