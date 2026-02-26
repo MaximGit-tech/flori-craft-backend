@@ -412,6 +412,22 @@ class PosifloraProductService:
                 return max(v["price"] for v in product["variants"])
             return product.get("price") or 0
 
+        CATEGORY_ORDER = [
+            "сборные букеты",
+            "моно/дуо-букеты",
+            "композиции",
+            "вазы",
+            "свечи/ароматы",
+            "аксессуары",
+        ]
+
+        def category_sort_key(item):
+            name_lower = item["name"].lower()
+            for i, ordered_name in enumerate(CATEGORY_ORDER):
+                if name_lower == ordered_name:
+                    return i
+            return len(CATEGORY_ORDER)
+
         result_categories = [
             {
                 "name": category_name,
@@ -419,6 +435,8 @@ class PosifloraProductService:
             }
             for category_name, products in categories_dict.items()
         ]
+
+        result_categories.sort(key=category_sort_key)
 
         return {"categories": result_categories}
 
