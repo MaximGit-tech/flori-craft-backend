@@ -298,7 +298,7 @@ class YooKassaWebhookView(APIView):
                     try:
                         message = (f'Заказ №{order.id} оплачен! '
                                 f'Сумма: {order.total_amount} руб. '
-                                f'Доставка: {order.date} {order.time}')
+                                f'Доставка: {order.date} {dict(Order.DELIVERY_TIME_CHOICES).get(str(order.time), order.time)}')
                         
                         success, response_message = send_sms(order.sender_phone, message)
                         
