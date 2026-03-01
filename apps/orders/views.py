@@ -19,7 +19,6 @@ from apps.orders.serializers import (
     PaymentStatusSerializer
 )
 from apps.orders.services import YooKassaService
-from apps.orders.telegram_service import TelegramNotificationService
 from apps.cart.models import Cart
 from apps.custom_auth.models import CustomUser
 from drf_spectacular.utils import extend_schema, OpenApiResponse, OpenApiParameter
@@ -288,12 +287,6 @@ class YooKassaWebhookView(APIView):
                     order.paid_at = timezone.now()
                     order.save(update_fields=['status', 'paid_at'])
                     logger.info(f"Заказ {order_id} успешно оплачен")
-
-                    try:
-                        telegram_service = TelegramNotificationService()
-                        telegram_service.send_new_order_notification(order)
-                    except Exception as e:
-                        logger.error(f"Не удалось отправить уведомление в Telegram: {str(e)}")
 
                     try:
                         message = (f'Заказ №{order.id} оплачен! '
