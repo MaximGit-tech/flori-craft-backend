@@ -113,8 +113,8 @@ class CreateOrderView(APIView):
                     order = Order.objects.create(
                         user=user,
                         delivery_type='delivery',
-                        sender_name=sender['name'],
-                        sender_phone=sender['phoneNumber'],
+                        sender_name=sender['name', ''],
+                        sender_phone=sender['phoneNumber', ''],
                         full_address=delivery['fullAddress'],
                         apartment=delivery.get('apartment', ''),
                         entrance=delivery.get('entrance', ''),

@@ -11,6 +11,6 @@ class CartItemSerializer(serializers.ModelSerializer):
 class CartItemInputSerializer(serializers.Serializer):
     product_id = serializers.CharField(max_length=64)
     title = serializers.CharField(max_length=255)
-    size = serializers.ChoiceField(choices=['S', 'M', 'L', ''], required=False, allow_blank=True)
+    size = serializers.ChoiceField(choices=['S', 'M', 'L', ''], required=False, allow_blank=True, allow_null=True)
     price = serializers.DecimalField(max_digits=10, decimal_places=2)
     image = serializers.CharField(max_length=500)
