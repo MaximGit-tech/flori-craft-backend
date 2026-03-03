@@ -67,8 +67,8 @@ class Order(models.Model):
         verbose_name='Тип получения'
     )
 
-    sender_name = models.CharField(max_length=255)
-    sender_phone = models.CharField(max_length=20)
+    sender_name = models.CharField(max_length=255, null=True, blank=True)
+    sender_phone = models.CharField(max_length=20, null=True, blank=True)
 
     full_address = models.TextField(null=True, blank=True)
     apartment = models.CharField(max_length=10, null=True, blank=True)
