@@ -3,7 +3,6 @@ from apps.orders.models import Order, OrderItem
 
 
 class OrderItemSerializer(serializers.ModelSerializer):
-    """Сериализатор для товара в заказе"""
     class Meta:
         model = OrderItem
         fields = ['id', 'product_id', 'name', 'size', 'price', 'image']
@@ -11,7 +10,6 @@ class OrderItemSerializer(serializers.ModelSerializer):
 
 
 class CartItemSerializer(serializers.Serializer):
-    """Сериализатор для элемента корзины"""
     productId = serializers.CharField(max_length=50)
     size = serializers.ChoiceField(choices=['S', 'M', 'L'], required=False, allow_blank=True)
     price = serializers.DecimalField(max_digits=10, decimal_places=2)
@@ -20,7 +18,6 @@ class CartItemSerializer(serializers.Serializer):
 
 
 class DeliverySerializer(serializers.Serializer):
-    """Сериализатор для информации о доставке"""
     fullAddress = serializers.CharField()
     apartment = serializers.CharField(required=False, allow_blank=True)
     entrance = serializers.CharField(required=False, allow_blank=True)
@@ -31,17 +28,24 @@ class DeliverySerializer(serializers.Serializer):
     district = serializers.CharField()
 
 
+class PickupSerializer(serializers.Serializer):
+    recipientName = serializers.CharField(max_length=255)
+    recipientPhone = serializers.CharField(max_length=20)
+    date = serializers.CharField()
+    time = serializers.CharField()
+
+
 class RecipientSerializer(serializers.Serializer):
-    """Сериализатор для информации о получателе/отправителе"""
     name = serializers.CharField(max_length=255)
     phoneNumber = serializers.CharField(max_length=20)
 
 
 class OrderCreateSerializer(serializers.Serializer):
-    """Сериализатор для создания заказа"""
     cartItems = CartItemSerializer(many=True)
-    delivery = DeliverySerializer()
-    recipient = RecipientSerializer()
+    deliveryType = serializers.ChoiceField(choices=['delivery', 'pickup'], default='delivery')
+    delivery = DeliverySerializer(required=False)
+    recipient = RecipientSerializer(required=False)
+    pickup = PickupSerializer(required=False)
     sender = RecipientSerializer()
     postcard = serializers.CharField(required=False, allow_blank=True, allow_null=True)
     deliveryPrice = serializers.DecimalField(max_digits=10, decimal_places=2)
@@ -49,26 +53,36 @@ class OrderCreateSerializer(serializers.Serializer):
     fullPrice = serializers.DecimalField(max_digits=10, decimal_places=2)
 
     def validate_cartItems(self, value):
-        """Проверка что есть хотя бы один товар"""
         if not value:
-            raise serializers.ValidationError("Заказ должен содержать хотя бы один товар")
+            raise serializers.ValidationError("Zakazh dolzhen soderzhat' hotya by odin tovar")
         return value
+
+    def validate(self, data):
+        delivery_type = data.get('deliveryType', 'delivery')
+        if delivery_type == 'delivery':
+            if not data.get('delivery'):
+                raise serializers.ValidationError({"delivery": "Informaciya o dostavke obyazatelna"})
+            if not data.get('recipient'):
+                raise serializers.ValidationError({"recipient": "Informaciya o poluchatele obyazatelna"})
+        elif delivery_type == 'pickup':
+            if not data.get('pickup'):
+                raise serializers.ValidationError({"pickup": "Informaciya o samovyvoza obyazatelna"})
+        return data
 
 
 class OrderDetailSerializer(serializers.ModelSerializer):
-    """Сериализатор для отображения заказа"""
     items = OrderItemSerializer(many=True, read_only=True)
     status_display = serializers.CharField(source='get_status_display', read_only=True)
-    time_display = serializers.CharField(source='get_time_display', read_only=True)
-    district_display = serializers.CharField(source='get_district_display', read_only=True)
+    delivery_type_display = serializers.CharField(source='get_delivery_type_display', read_only=True)
 
     class Meta:
         model = Order
         fields = [
             'id', 'user',
+            'delivery_type', 'delivery_type_display',
             'sender_name', 'sender_phone',
             'full_address', 'apartment', 'entrance', 'floor', 'intercom',
-            'date', 'time', 'time_display', 'district', 'district_display',
+            'date', 'time', 'district',
             'recipent_name', 'recipent_phone', 'postcart',
             'total_amount', 'delivery_cost', 'status', 'status_display',
             'payment_id', 'items',
@@ -78,7 +92,6 @@ class OrderDetailSerializer(serializers.ModelSerializer):
 
 
 class PaymentResponseSerializer(serializers.Serializer):
-    """Сериализатор для ответа с информацией о платеже"""
     order_id = serializers.IntegerField()
     payment_id = serializers.CharField()
     payment_url = serializers.URLField()
@@ -87,7 +100,6 @@ class PaymentResponseSerializer(serializers.Serializer):
 
 
 class PaymentStatusSerializer(serializers.Serializer):
-    """Сериализатор для проверки статуса платежа"""
     payment_id = serializers.CharField()
     status = serializers.CharField()
     paid = serializers.BooleanField()

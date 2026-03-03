@@ -19,6 +19,7 @@ from apps.orders.serializers import (
     PaymentStatusSerializer
 )
 from apps.orders.services import YooKassaService
+from apps.orders.telegram_service import TelegramNotificationService
 from apps.cart.models import Cart
 from apps.custom_auth.models import CustomUser
 from drf_spectacular.utils import extend_schema, OpenApiResponse, OpenApiParameter
@@ -30,7 +31,6 @@ logger = logging.getLogger(__name__)
 
 
 def unsign_user_id(signed_user_id):
-    """Расшифровывает подписанный user_id из cookie."""
     if not signed_user_id:
         return None
     try:
@@ -41,7 +41,6 @@ def unsign_user_id(signed_user_id):
 
 
 class CreateOrderView(APIView):
-    """Создание заказа с инициализацией платежа"""
     authentication_classes = []
     permission_classes = []
 
@@ -52,15 +51,15 @@ class CreateOrderView(APIView):
                 name='user_id',
                 type=OpenApiTypes.STR,
                 location=OpenApiParameter.QUERY,
-                description='ID пользователя (подписанный)',
+                description='ID polzovatelya (podpisannyy)',
                 required=True
             )
         ],
         responses={
             201: PaymentResponseSerializer,
-            400: OpenApiResponse(description="Ошибка валидации"),
-            404: OpenApiResponse(description="Пользователь не найден"),
-            500: OpenApiResponse(description="Ошибка создания платежа")
+            400: OpenApiResponse(description="Oshibka validacii"),
+            404: OpenApiResponse(description="Polzovatel ne nayden"),
+            500: OpenApiResponse(description="Oshibka sozdaniya platezha")
         },
         tags=['Orders']
     )
@@ -82,39 +81,61 @@ class CreateOrderView(APIView):
                 validated_data = serializer.validated_data
 
                 cart_items = validated_data['cartItems']
-                delivery = validated_data['delivery']
-                recipient = validated_data['recipient']
+                delivery_type = validated_data.get('deliveryType', 'delivery')
                 sender = validated_data['sender']
                 postcard = validated_data.get('postcard', '')
                 delivery_price = validated_data['deliveryPrice']
-                cart_price = validated_data['cartPrice']
                 full_price = validated_data['fullPrice']
 
-                order = Order.objects.create(
-                    user=user,
-                    sender_name=sender['name'],
-                    sender_phone=sender['phoneNumber'],
-                    full_address=delivery['fullAddress'],
-                    apartment=delivery.get('apartment', ''),
-                    entrance=delivery.get('entrance', ''),
-                    floor=delivery.get('floor', ''),
-                    intercom=delivery.get('intercom', ''),
-                    date=delivery['date'],
-                    time=delivery['time'],
-                    district=delivery['district'],
-                    recipent_name=recipient['name'],
-                    recipent_phone=recipient['phoneNumber'],
-                    postcart=postcard,
-                    total_amount=full_price,
-                    delivery_cost=delivery_price
-                )
+                # --- Создание заказа в зависимости от типа ---
+                if delivery_type == 'pickup':
+                    pickup = validated_data['pickup']
+                    order = Order.objects.create(
+                        user=user,
+                        delivery_type='pickup',
+                        sender_name=sender['name'],
+                        sender_phone=sender['phoneNumber'],
+                        # Адрес не нужен при самовывозе
+                        full_address=None,
+                        district=None,
+                        date=pickup['date'],
+                        time=pickup['time'],
+                        # Получатель берётся из pickup
+                        recipent_name=pickup['recipientName'],
+                        recipent_phone=pickup['recipientPhone'],
+                        postcart=postcard,
+                        total_amount=full_price,
+                        delivery_cost=Decimal('0'),
+                    )
+                else:
+                    delivery = validated_data['delivery']
+                    recipient = validated_data['recipient']
+                    order = Order.objects.create(
+                        user=user,
+                        delivery_type='delivery',
+                        sender_name=sender['name'],
+                        sender_phone=sender['phoneNumber'],
+                        full_address=delivery['fullAddress'],
+                        apartment=delivery.get('apartment', ''),
+                        entrance=delivery.get('entrance', ''),
+                        floor=delivery.get('floor', ''),
+                        intercom=delivery.get('intercom', ''),
+                        date=delivery['date'],
+                        time=delivery['time'],
+                        district=delivery['district'],
+                        recipent_name=recipient['name'],
+                        recipent_phone=recipient['phoneNumber'],
+                        postcart=postcard,
+                        total_amount=full_price,
+                        delivery_cost=delivery_price,
+                    )
 
                 order_items = [
                     OrderItem(
                         order=order,
                         product_id=item['productId'],
                         name=item['title'],
-                        size=item['size'],
+                        size=item.get('size', ''),
                         price=item['price'],
                         image=item['image']
                     )
@@ -125,17 +146,16 @@ class CreateOrderView(APIView):
                 try:
                     cart = Cart.objects.get(user=user)
                     cart.items.all().delete()
-                except Cart.DoesNotExist:
+                except (Cart.DoesNotExist, TypeError):
                     pass
 
                 yookassa_service = YooKassaService()
-
                 return_url = request.data.get('return_url', 'https://floricraft.ru/thank-you')
 
                 payment_result = yookassa_service.create_payment(
                     amount=full_price,
                     order_id=order.id,
-                    description=f"Оплата заказа №{order.id}",
+                    description=f"Oplata zakaza #{order.id}",
                     return_url=return_url,
                     user_email=getattr(user, 'email', None),
                     user_phone=sender['phoneNumber']
@@ -153,15 +173,14 @@ class CreateOrderView(APIView):
                 }, status=status.HTTP_201_CREATED)
 
         except Exception as e:
-            logger.error(f"Ошибка при создании заказа: {type(e).__name__}: {str(e)}", exc_info=True)
+            logger.error(f"Oshibka pri sozdanii zakaza: {type(e).__name__}: {str(e)}", exc_info=True)
             return Response(
-                {'error': 'Не удалось создать заказ и инициализировать платеж', 'detail': str(e)},
+                {'error': 'Ne udalos sozdat zakaz', 'detail': str(e)},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
 
 class CheckPaymentView(APIView):
-    """Проверка статуса платежа"""
     authentication_classes = []
     permission_classes = []
 
@@ -171,15 +190,15 @@ class CheckPaymentView(APIView):
                 name='user_id',
                 type=OpenApiTypes.STR,
                 location=OpenApiParameter.QUERY,
-                description='ID пользователя (подписанный)',
+                description='ID polzovatelya (podpisannyy)',
                 required=True
             )
         ],
         responses={
             200: PaymentStatusSerializer,
-            400: OpenApiResponse(description="Неверный user_id"),
-            404: OpenApiResponse(description="Заказ не найден"),
-            500: OpenApiResponse(description="Ошибка проверки платежа")
+            400: OpenApiResponse(description="Nevernyy user_id"),
+            404: OpenApiResponse(description="Zakaz ne nayden"),
+            500: OpenApiResponse(description="Oshibka proverki platezha")
         },
         tags=['Orders']
     )
@@ -188,27 +207,18 @@ class CheckPaymentView(APIView):
         user_id = unsign_user_id(signed_user_id)
 
         if not user_id:
-            return Response(
-                {'error': 'user_id required or invalid signature'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+            return Response({'error': 'user_id required or invalid signature'}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
             user = CustomUser.objects.get(id=user_id)
         except CustomUser.DoesNotExist:
-            return Response(
-                {'error': 'User not found'},
-                status=status.HTTP_404_NOT_FOUND
-            )
+            return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
 
         try:
             order = Order.objects.get(id=order_id, user=user)
 
             if not order.payment_id:
-                return Response(
-                    {'error': 'У заказа нет связанного платежа'},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
+                return Response({'error': 'U zakaza net svyazannogo platezha'}, status=status.HTTP_400_BAD_REQUEST)
 
             yookassa_service = YooKassaService()
             payment_info = yookassa_service.check_payment(order.payment_id)
@@ -227,27 +237,18 @@ class CheckPaymentView(APIView):
             }, status=status.HTTP_200_OK)
 
         except Order.DoesNotExist:
-            return Response(
-                {'error': 'Заказ не найден'},
-                status=status.HTTP_404_NOT_FOUND
-            )
+            return Response({'error': 'Zakaz ne nayden'}, status=status.HTTP_404_NOT_FOUND)
         except Exception as e:
-            logger.error(f"Ошибка при проверке платежа: {str(e)}")
-            return Response(
-                {'error': 'Не удалось проверить статус платежа'},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
+            logger.error(f"Oshibka pri proverke platezha: {str(e)}")
+            return Response({'error': 'Ne udalos proverit status platezha'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 @method_decorator(csrf_exempt, name='dispatch')
 class YooKassaWebhookView(APIView):
-    """Обработка webhook уведомлений от ЮКассы"""
     permission_classes = []
     authentication_classes = []
 
-    @extend_schema(
-        exclude=True
-    )
+    @extend_schema(exclude=True)
     def post(self, request):
         client_ip = request.META.get('HTTP_X_FORWARDED_FOR')
         if client_ip:
@@ -257,13 +258,12 @@ class YooKassaWebhookView(APIView):
 
         yookassa_service = YooKassaService()
         if not yookassa_service.verify_webhook_ip(client_ip):
-            logger.warning(f"Webhook от неавторизованного IP: {client_ip}")
+            logger.warning(f"Webhook ot neavtorizovannogo IP: {client_ip}")
             return Response({'error': 'Unauthorized'}, status=status.HTTP_403_FORBIDDEN)
 
         try:
             data = json.loads(request.body)
-
-            logger.info(f"Получен webhook от ЮКассы: {data}")
+            logger.info(f"Polchen webhook ot YuKassy: {data}")
 
             event_type = data.get('event')
             if event_type != 'payment.succeeded':
@@ -276,7 +276,7 @@ class YooKassaWebhookView(APIView):
             order_id = metadata.get('order_id')
 
             if not order_id:
-                logger.error("В webhook отсутствует order_id")
+                logger.error("V webhook otsutstvuet order_id")
                 return Response({'error': 'Missing order_id'}, status=status.HTTP_400_BAD_REQUEST)
 
             try:
@@ -286,39 +286,55 @@ class YooKassaWebhookView(APIView):
                     order.status = 'paid'
                     order.paid_at = timezone.now()
                     order.save(update_fields=['status', 'paid_at'])
-                    logger.info(f"Заказ {order_id} успешно оплачен")
+                    logger.info(f"Zakaz {order_id} uspeshno oplachen")
 
+                    # --- Уведомление в Telegram ---
                     try:
-                        message = (f'Заказ №{order.id} оплачен! '
-                                f'Сумма: {order.total_amount} руб. '
-                                f'Доставка: {order.date} {dict(Order.DELIVERY_TIME_CHOICES).get(str(order.time), order.time)}')
-                        
-                        success, response_message = send_sms(order.sender_phone, message)
-                        
-                        if success:
-                            logger.info(f'SMS успешно отправлено на {order.sender_phone} для заказа {order.id}')
+                        telegram_service = TelegramNotificationService()
+                        telegram_service.send_new_order_notification(order)
+                    except Exception as e:
+                        logger.error(f"Oshibka otpravki Telegram-uvedomleniya dlya zakaza {order.id}: {str(e)}")
+
+                    # --- SMS-уведомление пользователю ---
+                    try:
+                        if order.delivery_type == 'pickup':
+                            sms_message = (
+                                f"FloriCraft: Zakaz #{order.id} oplachen! "
+                                f"Samovyvoz {order.date} v {order.time}. "
+                                f"Summa: {order.total_amount} rub."
+                            )
                         else:
-                            logger.error(f'Ошибка отправки SMS для заказа {order.id}: {response_message}')
+                            time_display = dict(Order.DELIVERY_TIME_CHOICES).get(str(order.time), order.time)
+                            sms_message = (
+                                f"FloriCraft: Zakaz #{order.id} oplachen! "
+                                f"Dostavka {order.date} {time_display}. "
+                                f"Summa: {order.total_amount} rub."
+                            )
+
+                        success, response_message = send_sms(order.sender_phone, sms_message)
+                        if success:
+                            logger.info(f"SMS uspeshno otpravleno na {order.sender_phone} dlya zakaza {order.id}")
+                        else:
+                            logger.error(f"Oshibka otpravki SMS dlya zakaza {order.id}: {response_message}")
 
                     except Exception as e:
-                        logger.error(f"Исключение при отправке SMS для заказа {order.id}: {str(e)}")
+                        logger.error(f"Isklyuchenie pri otpravke SMS dlya zakaza {order.id}: {str(e)}")
 
                 return Response({'status': 'ok'}, status=status.HTTP_200_OK)
 
             except Order.DoesNotExist:
-                logger.error(f"Заказ {order_id} с payment_id {payment_id} не найден")
+                logger.error(f"Zakaz {order_id} s payment_id {payment_id} ne nayden")
                 return Response({'error': 'Order not found'}, status=status.HTTP_404_NOT_FOUND)
 
         except json.JSONDecodeError:
-            logger.error("Ошибка парсинга JSON в webhook")
+            logger.error("Oshibka parsinga JSON v webhook")
             return Response({'error': 'Invalid JSON'}, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
-            logger.error(f"Ошибка обработки webhook: {str(e)}")
+            logger.error(f"Oshibka obrabotki webhook: {str(e)}")
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class OrderDetailView(APIView):
-    """Получение деталей заказа"""
     authentication_classes = []
     permission_classes = []
 
@@ -328,14 +344,14 @@ class OrderDetailView(APIView):
                 name='user_id',
                 type=OpenApiTypes.STR,
                 location=OpenApiParameter.QUERY,
-                description='ID пользователя (подписанный)',
+                description='ID polzovatelya (podpisannyy)',
                 required=True
             )
         ],
         responses={
             200: OrderDetailSerializer,
-            400: OpenApiResponse(description="Неверный user_id"),
-            404: OpenApiResponse(description="Заказ не найден")
+            400: OpenApiResponse(description="Nevernyy user_id"),
+            404: OpenApiResponse(description="Zakaz ne nayden")
         },
         tags=['Orders']
     )
@@ -344,57 +360,30 @@ class OrderDetailView(APIView):
         user_id = unsign_user_id(signed_user_id)
 
         if not user_id:
-            return Response(
-                {'error': 'user_id required or invalid signature'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+            return Response({'error': 'user_id required or invalid signature'}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
             user = CustomUser.objects.get(id=user_id)
         except CustomUser.DoesNotExist:
-            return Response(
-                {'error': 'User not found'},
-                status=status.HTTP_404_NOT_FOUND
-            )
+            return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
 
         try:
-            order = Order.objects.prefetch_related('items').get(
-                id=order_id,
-                user=user
-            )
+            order = Order.objects.prefetch_related('items').get(id=order_id, user=user)
             serializer = OrderDetailSerializer(order)
             return Response(serializer.data, status=status.HTTP_200_OK)
         except Order.DoesNotExist:
-            return Response(
-                {'error': 'Заказ не найден'},
-                status=status.HTTP_404_NOT_FOUND
-            )
+            return Response({'error': 'Zakaz ne nayden'}, status=status.HTTP_404_NOT_FOUND)
 
 
 @method_decorator(csrf_exempt, name='dispatch')
 class TelegramAdminRegisterView(APIView):
-    """Регистрация администратора из Telegram бота"""
     permission_classes = []
     authentication_classes = []
 
-    @extend_schema(
-        exclude=True
-    )
+    @extend_schema(exclude=True)
     def post(self, request):
-        """
-        Регистрирует или обновляет администратора из Telegram бота
-
-        Ожидаемые данные:
-        {
-            "chat_id": 123456789,
-            "username": "username",
-            "first_name": "John",
-            "last_name": "Doe"
-        }
-        """
         try:
             data = json.loads(request.body)
-
             chat_id = data.get('chat_id')
             if not chat_id:
                 return Response({'error': 'chat_id is required'}, status=status.HTTP_400_BAD_REQUEST)
@@ -410,32 +399,20 @@ class TelegramAdminRegisterView(APIView):
             )
 
             action = 'registered' if created else 'updated'
-            logger.info(f"Telegram администратор {chat_id} {action}")
-
-            return Response({
-                'status': 'ok',
-                'action': action,
-                'chat_id': chat_id
-            }, status=status.HTTP_200_OK)
+            return Response({'status': 'ok', 'action': action, 'chat_id': chat_id}, status=status.HTTP_200_OK)
 
         except json.JSONDecodeError:
-            logger.error("Ошибка парсинга JSON при регистрации администратора")
             return Response({'error': 'Invalid JSON'}, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
-            logger.error(f"Ошибка регистрации администратора: {str(e)}")
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class TelegramAdminCheckView(APIView):
-    """Проверка статуса администратора"""
     authentication_classes = []
     permission_classes = []
 
-    @extend_schema(
-        exclude=True
-    )
+    @extend_schema(exclude=True)
     def get(self, request, chat_id):
-        """Проверить статус регистрации администратора"""
         try:
             admin = TelegramAdmin.objects.get(chat_id=chat_id)
             return Response({
@@ -446,47 +423,39 @@ class TelegramAdminCheckView(APIView):
                 'last_name': admin.last_name
             }, status=status.HTTP_200_OK)
         except TelegramAdmin.DoesNotExist:
-            return Response({
-                'is_registered': False,
-                'is_active': False
-            }, status=status.HTTP_200_OK)
+            return Response({'is_registered': False, 'is_active': False}, status=status.HTTP_200_OK)
 
 
 class TelegramOrdersListView(APIView):
-    """API для получения списка заказов для Telegram бота"""
     authentication_classes = []
     permission_classes = []
 
-    @extend_schema(
-        exclude=True
-    )
+    @extend_schema(exclude=True)
     def get(self, request, chat_id):
-        """Получить последние заказы для авторизованного администратора"""
         try:
             admin = TelegramAdmin.objects.get(chat_id=chat_id, is_active=True)
         except TelegramAdmin.DoesNotExist:
-            return Response(
-                {'error': 'Администратор не найден или неактивен'},
-                status=status.HTTP_404_NOT_FOUND
-            )
+            return Response({'error': 'Administrator ne nayden ili neaktiven'}, status=status.HTTP_404_NOT_FOUND)
 
         orders = Order.objects.filter(status='paid').prefetch_related('items').order_by('-created_at')[:10]
-        
+
         orders_data = []
         for order in orders:
-            items_data = []
-            for item in order.items.all():
-                items_data.append({
+            items_data = [
+                {
                     'name': item.name,
                     'size': item.get_size_display() if item.size else None,
                     'price': str(item.price)
-                })
-            
+                }
+                for item in order.items.all()
+            ]
+
             time_display = dict(Order.DELIVERY_TIME_CHOICES).get(order.time, order.time)
-            district_display = dict(Order.DELIVERY_DISTRICT_CHOICES).get(order.district, order.district)
-            
+            district_display = dict(Order.DELIVERY_DISTRICT_CHOICES).get(order.district, order.district) if order.district else None
+
             orders_data.append({
                 'id': order.id,
+                'delivery_type': order.delivery_type,
                 'sender_name': order.sender_name,
                 'sender_phone': order.sender_phone,
                 'recipent_name': order.recipent_name,
@@ -500,8 +469,5 @@ class TelegramOrdersListView(APIView):
                 'paid_at': order.paid_at.isoformat() if order.paid_at else None,
                 'items': items_data
             })
-        
-        return Response({
-            'orders': orders_data,
-            'count': len(orders_data)
-        }, status=status.HTTP_200_OK)
+
+        return Response({'orders': orders_data, 'count': len(orders_data)}, status=status.HTTP_200_OK)

@@ -47,6 +47,11 @@ class Order(models.Model):
         ('NMKAD', 'За Мкадом'),
     ]
 
+    DELIVERY_TYPE_CHOICES = [
+        ('delivery', 'Доставка'),
+        ('pickup', 'Самовывоз'),
+    ]
+
     user = models.ForeignKey(
         CustomUser,
         on_delete=models.SET_NULL,
@@ -55,18 +60,25 @@ class Order(models.Model):
         related_name='orders'
     )
 
+    delivery_type = models.CharField(
+        max_length=10,
+        choices=DELIVERY_TYPE_CHOICES,
+        default='delivery',
+        verbose_name='Тип получения'
+    )
+
     sender_name = models.CharField(max_length=255)
     sender_phone = models.CharField(max_length=20)
-    
-    full_address = models.TextField()
+
+    full_address = models.TextField(null=True, blank=True)
     apartment = models.CharField(max_length=10, null=True, blank=True)
     entrance = models.CharField(max_length=10, null=True, blank=True)
     floor = models.CharField(max_length=10, null=True, blank=True)
     intercom = models.CharField(max_length=10, null=True, blank=True)
+    district = models.CharField(choices=DELIVERY_DISTRICT_CHOICES, null=True, blank=True)
 
     date = models.CharField(max_length=10)
-    time = models.CharField(choices=DELIVERY_TIME_CHOICES)
-    district = models.CharField(choices=DELIVERY_DISTRICT_CHOICES)
+    time = models.CharField(max_length=20)
 
     recipent_name = models.CharField(max_length=255, null=True, blank=True)
     recipent_phone = models.CharField(max_length=20, null=True, blank=True)
