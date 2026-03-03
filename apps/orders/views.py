@@ -299,16 +299,16 @@ class YooKassaWebhookView(APIView):
                     try:
                         if order.delivery_type == 'pickup':
                             sms_message = (
-                                f"FloriCraft: Zakaz #{order.id} oplachen! "
-                                f"Samovyvoz {order.date} v {order.time}. "
-                                f"Summa: {order.total_amount} rub."
+                                f"FloriCraft: Заказ #{order.id} оплачен! "
+                                f"Самовывоз {order.date} в {order.time}. "
+                                f"Сумма: {order.total_amount} руб."
                             )
                         else:
                             time_display = dict(Order.DELIVERY_TIME_CHOICES).get(str(order.time), order.time)
                             sms_message = (
-                                f"FloriCraft: Zakaz #{order.id} oplachen! "
-                                f"Dostavka {order.date} {time_display}. "
-                                f"Summa: {order.total_amount} rub."
+                                f"FloriCraft: Заказ #{order.id} оплачен! "
+                                f"Доставка {order.date} {time_display}. "
+                                f"Сумма: {order.total_amount} руб."
                             )
 
                         success, response_message = send_sms(order.sender_phone, sms_message)
