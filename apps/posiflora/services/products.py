@@ -173,11 +173,16 @@ class PosifloraProductService:
             description = attributes.get("description", "")
 
             logger.info(f"[BOUQUET {bouquet_id}] Title: {title}")
-            logger.info(f"[BOUQUET {bouquet_id}] Relationships: {json.dumps(relationships, indent=2, ensure_ascii=False)}")
+            
+            main_image_id = relationships.get("logo", {}).get("data", {}).get("id", "")
+
+            images_data = sorted(
+                relationships.get("images", {}).get("data", []),
+                key=lambda img: img.get("id") != main_image_id
+            )
 
             image_urls = []
 
-            images_data = relationships.get("images", {}).get("data", [])
             if images_data:
                 logger.info(f"[BOUQUET {bouquet_id}] Found {len(images_data)} images in relationships")
                 for img_ref in images_data:
@@ -328,7 +333,13 @@ class PosifloraProductService:
             else:
                 category_name = "Без категории"
 
-            images_data = relationships.get("images", {}).get("data", [])
+            main_image_id = relationships.get("logo", {}).get("data", {}).get("id", "")
+
+            images_data = sorted(
+                relationships.get("images", {}).get("data", []),
+                key=lambda img: img.get("id") != main_image_id
+            )
+
             logger.info(f"[SPEC {spec_id}] Images in relationships: {images_data}")
 
             image_urls = []
