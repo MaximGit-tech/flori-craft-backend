@@ -174,11 +174,16 @@ class PosifloraProductService:
 
             logger.info(f"[BOUQUET {bouquet_id}] Title: {title}")
             
-            main_image_id = relationships.get("logo", {}).get("data", {}).get("id", "")
+            logo_rel = relationships.get("logo") or {}
+            logo_data = logo_rel.get("data") or {}
+            main_image_id = logo_data.get("id", "")
+
+            images_rel = relationships.get("images") or {}
+            images_list = images_rel.get("data") or []
 
             images_data = sorted(
-                relationships.get("images", {}).get("data", []),
-                key=lambda img: img.get("id") != main_image_id
+                images_list,
+                key=lambda img: (img.get("id") if img else "") != main_image_id
             )
 
             image_urls = []
@@ -333,11 +338,16 @@ class PosifloraProductService:
             else:
                 category_name = "Без категории"
 
-            main_image_id = relationships.get("logo", {}).get("data", {}).get("id", "")
+            logo_rel = relationships.get("logo") or {}
+            logo_data = logo_rel.get("data") or {}
+            main_image_id = logo_data.get("id", "")
+
+            images_rel = relationships.get("images") or {}
+            images_list = images_rel.get("data") or []
 
             images_data = sorted(
-                relationships.get("images", {}).get("data", []),
-                key=lambda img: img.get("id") != main_image_id
+                images_list,
+                key=lambda img: (img.get("id") if img else "") != main_image_id
             )
 
             logger.info(f"[SPEC {spec_id}] Images in relationships: {images_data}")

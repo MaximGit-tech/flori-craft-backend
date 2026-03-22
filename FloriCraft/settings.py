@@ -9,8 +9,6 @@ import dj_database_url
 
 
 BASE_DIR = Path(__file__).resolve().parent.parent
-
-
 load_dotenv(BASE_DIR / '.env')
 
 
@@ -116,6 +114,7 @@ REST_FRAMEWORK = {
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
 }
 
+
 DATABASES = {
     'default': dj_database_url.parse(
         os.environ.get('DATABASE_URL'),
@@ -123,6 +122,7 @@ DATABASES = {
         ssl_require=False
     )
 }
+
 
 TELEGRAM_BOT_API_URL = os.environ.get('TELEGRAM_BOT_API_URL', 'http://localhost:8000')
 TELEGRAM_BOT_API_KEY = os.environ.get('TELEGRAM_BOT_API_KEY', '')
