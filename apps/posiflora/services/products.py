@@ -236,6 +236,7 @@ class PosifloraProductService:
             {
                 "categories": [
                     {
+                        "id": "uuid",
                         "name": "Авторские букеты",
                         "products": [
                             {
@@ -335,8 +336,10 @@ class PosifloraProductService:
                 category_key = (category_data.get("type"), category_data.get("id"))
                 category_obj = included_index.get(category_key)
                 category_name = category_obj.get("attributes", {}).get("title", "") if category_obj else "Без категории"
+                category_id = category_data.get("id", "")
             else:
                 category_name = "Без категории"
+                category_id = ""
 
             logo_rel = relationships.get("logo") or {}
             logo_data = logo_rel.get("data") or {}
@@ -415,18 +418,17 @@ class PosifloraProductService:
             }
 
             if variants:
-                sorted_variants = sorted(
+                product_dict["variants"] = sorted(
                     variants,
                     key=lambda v: SIZE_ORDER.get(v["size"], 999)
                 )
-                product_dict["variants"] = sorted_variants
             else:
                 min_price = attributes.get("minPrice")
                 max_price = attributes.get("maxPrice")
                 if min_price is not None or max_price is not None:
                     product_dict["price"] = min_price if min_price is not None else (max_price or 0)
 
-            categories_dict[category_name].append(product_dict)
+            categories_dict[(category_name, category_id)].append(product_dict)
 
         def get_product_price(product):
             if "variants" in product:
@@ -451,10 +453,11 @@ class PosifloraProductService:
 
         result_categories = [
             {
+                "id": category_id,
                 "name": category_name,
                 "products": sorted(products, key=get_product_price, reverse=True)
             }
-            for category_name, products in categories_dict.items()
+            for (category_name, category_id), products in categories_dict.items()
         ]
 
         result_categories.sort(key=category_sort_key)
