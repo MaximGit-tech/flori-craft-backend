@@ -55,6 +55,7 @@ class CategoryProductSerializer(serializers.Serializer):
 class CategorySerializer(serializers.Serializer):
     """Serializer для категории с продуктами"""
 
+    id = serializers.CharField(max_length=100)
     name = serializers.CharField(max_length=500)
     products = CategoryProductSerializer(many=True)
 
