@@ -259,6 +259,24 @@ class PosifloraProductService:
                 ]
             }
         """
+        categories_url = self._build_url("/categories")
+        categories_response = make_request_with_retry(
+            'GET',
+            categories_url,
+            headers=self._get_headers(),
+            timeout=30
+        )
+        categories_payload = categories_response.json()
+
+        category_name_to_id = {}
+        for cat in categories_payload.get("data", []):
+            cat_title = cat.get("attributes", {}).get("title", "")
+            cat_id = cat.get("id", "")
+            if cat_title and cat_id:
+                category_name_to_id[cat_title] = cat_id
+
+        logger.info(f"[FETCH SPECS] Loaded {len(category_name_to_id)} categories: {category_name_to_id}")
+
         url = self._build_url("/specifications")
         base_params = {
             "include": "category,specVariants.variant,specVariants.variant.tags,specVariants.specVariantPrices,images",
@@ -336,10 +354,8 @@ class PosifloraProductService:
                 category_key = (category_data.get("type"), category_data.get("id"))
                 category_obj = included_index.get(category_key)
                 category_name = category_obj.get("attributes", {}).get("title", "") if category_obj else "Без категории"
-                category_id = category_data.get("id", "")
             else:
                 category_name = "Без категории"
-                category_id = ""
 
             logo_rel = relationships.get("logo") or {}
             logo_data = logo_rel.get("data") or {}
@@ -428,7 +444,7 @@ class PosifloraProductService:
                 if min_price is not None or max_price is not None:
                     product_dict["price"] = min_price if min_price is not None else (max_price or 0)
 
-            categories_dict[(category_name, category_id)].append(product_dict)
+            categories_dict[category_name].append(product_dict)
 
         def get_product_price(product):
             if "variants" in product:
@@ -453,11 +469,11 @@ class PosifloraProductService:
 
         result_categories = [
             {
-                "id": category_id,
+                "id": category_name_to_id.get(category_name, ""),
                 "name": category_name,
                 "products": sorted(products, key=get_product_price, reverse=True)
             }
-            for (category_name, category_id), products in categories_dict.items()
+            for category_name, products in categories_dict.items()
         ]
 
         result_categories.sort(key=category_sort_key)
